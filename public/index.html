@@ -1,12 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    
-    <script type="module" src="./dist/main.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MyUber Demo</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+
+  <body>
+    <main class="app">
+      <h1>🚗 MyUber Demo</h1>
+
+      <section class="card">
+        <h2>Ride Request</h2>
+
+        <button id="requestRideBtn">Request Ride</button>
+
+        <p><strong>Ride ID:</strong> <span id="rideId">None</span></p>
+        <p><strong>Status:</strong> <span id="rideStatus">Not started</span></p>
+      </section>
+
+      <section class="card">
+        <h2>Driver Location</h2>
+
+        <p><strong>Latitude:</strong> <span id="driverLat">---</span></p>
+        <p><strong>Longitude:</strong> <span id="driverLng">---</span></p>
+      </section>
+
+      <section class="card">
+        <h2>Live Logs</h2>
+        <pre id="logs"></pre>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>
