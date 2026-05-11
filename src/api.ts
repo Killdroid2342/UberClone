@@ -89,6 +89,42 @@ export async function loginDriver(data: LoginData): Promise<LoginResponse> {
   return res.json();
 }
 
+export async function getMe(): Promise<UserProfile> {
+  const res = await fetch(`${API_URL}/auth/me`, {
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error("Not authenticated");
+  }
+
+  return res.json();
+}
+
+export async function searchLocations(query: string): Promise<LocationResult[]> {
+  const res = await fetch(
+    `${API_URL}/search/locations?q=${encodeURIComponent(query)}`,
+    { headers: authHeaders() }
+  );
+
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function requestRide(
+  riderId: string,
+  pickup: { lat: number; lng: number },
+  destination: { lat: number; lng: number }
+) {
+  const res = await fetch(`${API_URL}/rides`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ rider_id: riderId, pickup, destination }),
+  });
+
+  if (!res.ok) throw new Error("Failed to request ride");
+  return res.json();
+}
 
 export function connectRideSocket(
   rideId: string,
