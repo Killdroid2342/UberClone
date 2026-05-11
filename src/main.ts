@@ -43,7 +43,8 @@ function bindAll(): void {
   bindClick("btn-logout-rider", () => { clearToken(); showScreen("screen-welcome"); showToast("Logged out", "info"); });
   bindClick("btn-logout-driver", () => { clearToken(); showScreen("screen-welcome"); showToast("Logged out", "info"); });
   bindRiderLogin();
-
+  bindRiderSignup();
+  bindDriverLogin();
   bindConfirmRide();
 }
 
@@ -73,6 +74,59 @@ function bindRiderLogin(): void {
     }
   });
 }
+
+function bindRiderSignup(): void {
+  const form = document.getElementById("form-rider-signup") as HTMLFormElement;
+  if (!form) return;
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector("button[type=submit]") as HTMLButtonElement;
+    const data = getFormData("form-rider-signup");
+
+    const missing = validateRequired(data, ["name", "email", "phone", "password"]);
+    if (missing) { showToast(missing, "error"); return; }
+    if (!validateEmail(data.email)) { showToast("Enter a valid email", "error"); return; }
+    if (data.password.length < 6) { showToast("Password must be at least 6 characters", "error"); return; }
+
+    setLoading(btn, true);
+    try {
+      await signupRider({ name: data.name, email: data.email, phone: data.phone, password: data.password });
+      showToast("Account created! Please log in.", "success");
+      showScreen("screen-rider-login");
+    } catch (err: any) {
+      showToast(err.message || "Signup failed", "error");
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+}
+
+function bindDriverLogin(): void {
+  const form = document.getElementById("form-driver-login") as HTMLFormElement;
+  if (!form) return;
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector("button[type=submit]") as HTMLButtonElement;
+    const data = getFormData("form-driver-login");
+
+    if (!validateEmail(data.email)) { showToast("Enter a valid email", "error"); return; }
+    if (!data.password) { showToast("Password is required", "error"); return; }
+
+    setLoading(btn, true);
+    try {
+      const res = await loginDriver({ email: data.email, password: data.password });
+      setToken(res.token);
+      currentUser = res.user;
+      showToast(`Welcome, ${res.user.name}!`, "success");
+      showScreen("screen-driver-home");
+    } catch (err: any) {
+      showToast(err.message || "Login failed", "error");
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+}
+
 
 
 function bindClick(id: string, handler: () => void): void {
