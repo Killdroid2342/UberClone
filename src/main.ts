@@ -1,70 +1,31 @@
-import { requestRide, connectRideSocket } from "./api";
+import { showScreen, showToast, setLoading, getFormData, validateEmail, validateRequired } from "./ui.js";
+import { signupRider, loginRider, signupDriver, loginDriver, getMe, setToken, getToken, clearToken, requestRide } from "./api.js";
+import { initMap } from "./map.js";
+import { initLocationSearch, getSelectedPickup, getSelectedDest } from "./location.js";
+import type { UserProfile } from "./types.js";
 
-const requestRideBtn = document.getElementById("requestRideBtn") as HTMLButtonElement;
-const rideIdEl = document.getElementById("rideId") as HTMLSpanElement;
-const rideStatusEl = document.getElementById("rideStatus") as HTMLSpanElement;
-const driverLatEl = document.getElementById("driverLat") as HTMLSpanElement;
-const driverLngEl = document.getElementById("driverLng") as HTMLSpanElement;
-const logsEl = document.getElementById("logs") as HTMLPreElement;
+let currentUser: UserProfile | null = null;
 
-let driverInterval: number | null = null;
+document.addEventListener("DOMContentLoaded", async () => {
 
-function log(message: string, data?: unknown) {
-  logsEl.textContent += `${message}\n`;
-
-  if (data) {
-    logsEl.textContent += `${JSON.stringify(data, null, 2)}\n`;
-  }
-
-  logsEl.textContent += "\n";
-  logsEl.scrollTop = logsEl.scrollHeight;
-}
-
-requestRideBtn.addEventListener("click", async () => {
-  try {
-    requestRideBtn.disabled = true;
-    requestRideBtn.textContent = "Ride requested";
-
-    const ride = await requestRide();
-
-    rideIdEl.textContent = ride.id;
-    rideStatusEl.textContent = ride.status;
-
-    log("Ride requested:", ride);
-
-    const socket = connectRideSocket(ride.id, (data) => {
-      const updatedRide = data.ride;
-
-      rideStatusEl.textContent = updatedRide.status;
-
-      if (updatedRide.driver_location) {
-        driverLatEl.textContent = String(updatedRide.driver_location.lat);
-        driverLngEl.textContent = String(updatedRide.driver_location.lng);
+  const token = getToken();
+  if (token) {
+    try {
+      const user = await getMe();
+      currentUser = user;
+      if (user.role === "rider") {
+        showScreen("screen-rider-home");
+        setTimeout(() => { initMap("map"); initLocationSearch(); }, 100);
+      } else {
+        showScreen("screen-driver-home");
       }
-
-      log("Live ride update:", data);
-    });
-
-    if (driverInterval) {
-      clearInterval(driverInterval);
+      showToast(`Welcome back, ${user.name}!`, "success");
+      return;
+    } catch {
+      clearToken();
     }
-
-    driverInterval = window.setInterval(() => {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(
-          JSON.stringify({
-            type: "driver_location",
-            location: {
-              lat: Number((40.72 + Math.random() * 0.01).toFixed(6)),
-              lng: Number((-74.0 + Math.random() * 0.01).toFixed(6)),
-            },
-          })
-        );
-      }
-    }, 2000);
-  } catch (error) {
-    requestRideBtn.disabled = false;
-    requestRideBtn.textContent = "Request Ride";
-    log("Error:", error);
   }
+
+  showScreen("screen-welcome");
 });
+
