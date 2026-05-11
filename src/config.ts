@@ -1,0 +1,5 @@
+export const API_URL = "http://localhost:8000";
+export const WS_URL = "ws://localhost:8000";
+export const DEFAULT_CENTER: [number, number] = [51.505, -0.09];
+export const DEFAULT_ZOOM = 13;
+export const SEARCH_DEBOUNCE_MS = 350;
