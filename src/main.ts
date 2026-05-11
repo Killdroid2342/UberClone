@@ -45,6 +45,7 @@ function bindAll(): void {
   bindRiderLogin();
   bindRiderSignup();
   bindDriverLogin();
+  bindDriverSignup();
   bindConfirmRide();
 }
 
@@ -127,7 +128,68 @@ function bindDriverLogin(): void {
   });
 }
 
+function bindDriverSignup(): void {
+  const btnNext1 = document.getElementById("btn-driver-step-2") as HTMLButtonElement;
+  const btnNext2 = document.getElementById("btn-driver-step-3") as HTMLButtonElement;
+  const btnBack1 = document.getElementById("btn-driver-back-1") as HTMLButtonElement;
+  const btnBack2 = document.getElementById("btn-driver-back-2") as HTMLButtonElement;
+  const btnSubmit = document.getElementById("btn-driver-submit") as HTMLButtonElement;
 
+  const step1 = document.getElementById("driver-step-1") as HTMLDivElement;
+  const step2 = document.getElementById("driver-step-2") as HTMLDivElement;
+  const step3 = document.getElementById("driver-step-3") as HTMLDivElement;
+  const indicators = document.querySelectorAll(".step-indicator .step");
+
+  function setStep(n: number) {
+    [step1, step2, step3].forEach((s, i) => {
+      if (s) { s.style.display = i === n ? "block" : "none"; }
+    });
+    indicators.forEach((ind, i) => {
+      ind.classList.toggle("active", i <= n);
+    });
+  }
+
+  if (btnNext1) btnNext1.addEventListener("click", () => {
+    const data = getFormData("form-driver-signup");
+    const missing = validateRequired(data, ["name", "email", "phone", "password"]);
+    if (missing) { showToast(missing, "error"); return; }
+    if (!validateEmail(data.email)) { showToast("Enter a valid email", "error"); return; }
+    if (data.password.length < 6) { showToast("Password must be 6+ chars", "error"); return; }
+    setStep(1);
+  });
+
+  if (btnNext2) btnNext2.addEventListener("click", () => {
+    const data = getFormData("form-driver-signup");
+    const missing = validateRequired(data, ["vehicle_make", "vehicle_model", "vehicle_year", "vehicle_color", "vehicle_plate"]);
+    if (missing) { showToast(missing, "error"); return; }
+    setStep(2);
+  });
+
+  if (btnBack1) btnBack1.addEventListener("click", () => setStep(0));
+  if (btnBack2) btnBack2.addEventListener("click", () => setStep(1));
+
+  if (btnSubmit) btnSubmit.addEventListener("click", async () => {
+    const data = getFormData("form-driver-signup");
+    const missing = validateRequired(data, ["license_number"]);
+    if (missing) { showToast(missing, "error"); return; }
+
+    setLoading(btnSubmit, true);
+    try {
+      await signupDriver({
+        name: data.name, email: data.email, phone: data.phone, password: data.password,
+        vehicle_make: data.vehicle_make, vehicle_model: data.vehicle_model,
+        vehicle_year: parseInt(data.vehicle_year), vehicle_color: data.vehicle_color,
+        vehicle_plate: data.vehicle_plate, license_number: data.license_number,
+      });
+      showToast("Driver account created! Please log in.", "success");
+      showScreen("screen-driver-login");
+    } catch (err: any) {
+      showToast(err.message || "Signup failed", "error");
+    } finally {
+      setLoading(btnSubmit, false);
+    }
+  });
+}
 
 function bindClick(id: string, handler: () => void): void {
   const el = document.getElementById(id);
