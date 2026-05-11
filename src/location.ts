@@ -11,7 +11,57 @@ let selectedDest: LocationResult | null = null;
 export function getSelectedPickup(): LocationResult | null { return selectedPickup; }
 export function getSelectedDest(): LocationResult | null { return selectedDest; }
 
+export function initLocationSearch(): void {
+  const pickupInput = document.getElementById("pickup-input") as HTMLInputElement;
+  const destInput = document.getElementById("dest-input") as HTMLInputElement;
+  const pickupResults = document.getElementById("pickup-results") as HTMLDivElement;
+  const destResults = document.getElementById("dest-results") as HTMLDivElement;
 
+  if (!pickupInput || !destInput) return;
+
+  pickupInput.addEventListener("input", () => {
+    if (pickupTimer) clearTimeout(pickupTimer);
+    const q = pickupInput.value.trim();
+    if (q.length < 2) { pickupResults.innerHTML = ""; pickupResults.classList.remove("visible"); return; }
+    pickupTimer = window.setTimeout(async () => {
+      const results = await searchLocations(q);
+      renderResults(pickupResults, results, (r) => {
+        selectedPickup = r;
+        pickupInput.value = r.name.split(",")[0];
+        pickupResults.innerHTML = "";
+        pickupResults.classList.remove("visible");
+        setPickupMarker(r.lat, r.lng);
+        updateConfirmButton();
+      });
+    }, SEARCH_DEBOUNCE_MS);
+  });
+
+  destInput.addEventListener("input", () => {
+    if (destTimer) clearTimeout(destTimer);
+    const q = destInput.value.trim();
+    if (q.length < 2) { destResults.innerHTML = ""; destResults.classList.remove("visible"); return; }
+    destTimer = window.setTimeout(async () => {
+      const results = await searchLocations(q);
+      renderResults(destResults, results, (r) => {
+        selectedDest = r;
+        destInput.value = r.name.split(",")[0];
+        destResults.innerHTML = "";
+        destResults.classList.remove("visible");
+        setDestinationMarker(r.lat, r.lng);
+        updateConfirmButton();
+      });
+    }, SEARCH_DEBOUNCE_MS);
+  });
+  document.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest(".search-field")) {
+      pickupResults.innerHTML = "";
+      pickupResults.classList.remove("visible");
+      destResults.innerHTML = "";
+      destResults.classList.remove("visible");
+    }
+  });
+}
 
 function renderResults(container: HTMLDivElement, results: LocationResult[], onSelect: (r: LocationResult) => void): void {
   container.innerHTML = "";
