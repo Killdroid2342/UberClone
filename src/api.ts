@@ -1,53 +1,105 @@
-const API_URL = "http://localhost:8000";
-const WS_URL = "ws://localhost:8000";
+import { API_URL, WS_URL } from "./config.js";
+import type {
+  RiderSignupData,
+  DriverSignupData,
+  LoginData,
+  LoginResponse,
+  UserProfile,
+  LocationResult,
+} from "./types.js";
 
-export async function requestRide() {
-  const response = await fetch(`${API_URL}/rides`, {
+export function getToken(): string | null {
+  return localStorage.getItem("myuber_token");
+}
+
+export function setToken(token: string): void {
+  localStorage.setItem("myuber_token", token);
+}
+
+export function clearToken(): void {
+  localStorage.removeItem("myuber_token");
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+export async function signupRider(data: RiderSignupData): Promise<UserProfile> {
+  const res = await fetch(`${API_URL}/riders/signup`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      rider_id: "rider_1",
-      pickup: {
-        lat: 40.7128,
-        lng: -74.006,
-      },
-      destination: {
-        lat: 40.758,
-        lng: -73.9855,
-      },
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to request ride");
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Signup failed");
   }
 
-  return response.json();
+  return res.json();
 }
+
+export async function loginRider(data: LoginData): Promise<LoginResponse> {
+  const res = await fetch(`${API_URL}/riders/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Login failed");
+  }
+
+  return res.json();
+}
+
+export async function signupDriver(data: DriverSignupData): Promise<UserProfile> {
+  const res = await fetch(`${API_URL}/drivers/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Signup failed");
+  }
+
+  return res.json();
+}
+
+export async function loginDriver(data: LoginData): Promise<LoginResponse> {
+  const res = await fetch(`${API_URL}/drivers/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Login failed");
+  }
+
+  return res.json();
+}
+
 
 export function connectRideSocket(
   rideId: string,
   onMessage: (data: any) => void
-) {
+): WebSocket {
   const socket = new WebSocket(`${WS_URL}/ws/rides/${rideId}`);
 
-  socket.onopen = () => {
-    console.log("WebSocket connected");
-  };
-
-  socket.onmessage = (event) => {
-    onMessage(JSON.parse(event.data));
-  };
-
-  socket.onerror = (error) => {
-    console.error("WebSocket error:", error);
-  };
-
-  socket.onclose = () => {
-    console.log("WebSocket closed");
-  };
+  socket.onopen = () => console.log("WebSocket connected");
+  socket.onmessage = (event) => onMessage(JSON.parse(event.data));
+  socket.onerror = (error) => console.error("WebSocket error:", error);
+  socket.onclose = () => console.log("WebSocket closed");
 
   return socket;
 }
