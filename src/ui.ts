@@ -49,3 +49,30 @@ export function showToast(message: string, type: "success" | "error" | "info" = 
   }, 3500);
 }
 
+export function setLoading(button: HTMLButtonElement, loading: boolean): void {
+  if (loading) {
+    button.disabled = true;
+    button.dataset.originalText = button.textContent || "";
+    button.innerHTML = `<span class="spinner"></span>`;
+  } else {
+    button.disabled = false;
+    button.textContent = button.dataset.originalText || "Submit";
+  }
+}
+
+export function getFormData(formId: string): Record<string, string> {
+  const form = document.getElementById(formId) as HTMLFormElement;
+  const data: Record<string, string> = {};
+
+  if (!form) return data;
+
+  const inputs = form.querySelectorAll("input, select, textarea");
+  inputs.forEach((input) => {
+    const el = input as HTMLInputElement;
+    if (el.name) {
+      data[el.name] = el.value.trim();
+    }
+  });
+
+  return data;
+}
