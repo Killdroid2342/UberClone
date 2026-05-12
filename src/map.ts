@@ -37,3 +37,28 @@ export function initMap(containerId: string): Map {
   return map!;
 }
 
+
+
+function fitBounds(): void {
+  if (!map) return;
+  if (pickupMarker && destinationMarker) {
+    if (routeLine) map.removeLayer(routeLine);
+    const p = pickupMarker.getLatLng();
+    const d = destinationMarker.getLatLng();
+    routeLine = L.polyline([p, d], { color: "#6c5ce7", weight: 4, opacity: 0.8, dashArray: "10, 10" }).addTo(map);
+    map.fitBounds(L.latLngBounds([p, d]), { padding: [80, 80] });
+  } else if (pickupMarker) {
+    map.setView(pickupMarker.getLatLng(), 15);
+  } else if (destinationMarker) {
+    map.setView(destinationMarker.getLatLng(), 15);
+  }
+}
+
+export function clearMarkers(): void {
+  if (!map) return;
+  if (pickupMarker) { map.removeLayer(pickupMarker); pickupMarker = null; }
+  if (destinationMarker) { map.removeLayer(destinationMarker); destinationMarker = null; }
+  if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+}
+
+export function getMap(): Map | null { return map; }
