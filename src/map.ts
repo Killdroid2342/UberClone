@@ -18,3 +18,22 @@ function createIcon(color: string, emoji: string): DivIcon {
 
 const pickupIcon = createIcon("#00d2a0", "📍");
 const destinationIcon = createIcon("#6c5ce7", "🏁");
+
+export function initMap(containerId: string): Map {
+  if (map) map.remove();
+  map = L.map(containerId, { zoomControl: false }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; OSM &copy; CARTO',
+    subdomains: "abcd",
+    maxZoom: 20,
+  }).addTo(map);
+  L.control.zoom({ position: "bottomright" }).addTo(map);
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { map!.setView([pos.coords.latitude, pos.coords.longitude], 15); },
+      () => {}
+    );
+  }
+  return map!;
+}
+
