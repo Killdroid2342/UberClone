@@ -37,7 +37,21 @@ export function initMap(containerId: string): Map {
   return map!;
 }
 
+export function setPickupMarker(lat: number, lng: number): void {
+  if (!map) return;
+  if (pickupMarker) pickupMarker.setLatLng([lat, lng]);
+  else pickupMarker = L.marker([lat, lng], { icon: pickupIcon }).addTo(map);
+  pickupMarker!.bindPopup("Pickup").openPopup();
+  fitBounds();
+}
 
+export function setDestinationMarker(lat: number, lng: number): void {
+  if (!map) return;
+  if (destinationMarker) destinationMarker.setLatLng([lat, lng]);
+  else destinationMarker = L.marker([lat, lng], { icon: destinationIcon }).addTo(map);
+  destinationMarker!.bindPopup("Destination").openPopup();
+  fitBounds();
+}
 
 function fitBounds(): void {
   if (!map) return;
