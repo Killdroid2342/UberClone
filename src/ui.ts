@@ -76,3 +76,16 @@ export function getFormData(formId: string): Record<string, string> {
 
   return data;
 }
+
+export function validateEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+export function validateRequired(fields: Record<string, string>, keys: string[]): string | null {
+  for (const key of keys) {
+    if (!fields[key]) {
+      return `${key.replace(/_/g, " ")} is required`;
+    }
+  }
+  return null;
+}
