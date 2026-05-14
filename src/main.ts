@@ -290,6 +290,76 @@ function connectDriverUpdates(driverId: string): void {
   });
 }
 
+function startDriverLocationTracking(): void {
+  if (!currentUser || currentUser.role !== "driver") return;
+  stopDriverLocationTracking();
+
+  if (!navigator.geolocation) {
+    void publishDriverLocation(defaultLocation(), true);
+    return;
+  }
+
+  driverLocationWatchId = navigator.geolocation.watchPosition(
+    (position) => {
+      void publishDriverLocation(
+        {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        },
+        !lastDriverLocation
+      );
+    },
+    () => {
+      if (!lastDriverLocation) {
+        void publishDriverLocation(defaultLocation(), true);
+      }
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+  );
+}
+
+function stopDriverLocationTracking(): void {
+  if (driverLocationWatchId !== null && navigator.geolocation) {
+    navigator.geolocation.clearWatch(driverLocationWatchId);
+  }
+  driverLocationWatchId = null;
+  lastDriverLocation = null;
+  lastDriverLocationSentAt = 0;
+}
+
+function startRiderLocationTracking(rideId: string): void {
+  stopRiderLocationTracking(false);
+  activeRiderRideId = rideId;
+
+  if (!navigator.geolocation) {
+    const pickup = getSelectedPickup();
+    if (pickup) {
+      void publishRiderLocation({ lat: pickup.lat, lng: pickup.lng }, true);
+    }
+    return;
+  }
+
+  riderLocationWatchId = navigator.geolocation.watchPosition(
+    (position) => {
+      void publishRiderLocation(
+        {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        },
+        !lastRiderLocation
+      );
+    },
+    () => {
+      const pickup = getSelectedPickup();
+      if (!lastRiderLocation && pickup) {
+        void publishRiderLocation({ lat: pickup.lat, lng: pickup.lng }, true);
+      }
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+  );
+}
+
+
 
 function bindClick(id: string, handler: () => void): void {
   const el = document.getElementById(id);
