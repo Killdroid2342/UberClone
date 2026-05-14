@@ -1,4 +1,3 @@
-
 const allScreenIds = [
   "screen-welcome",
   "screen-rider-login",
@@ -8,6 +7,16 @@ const allScreenIds = [
   "screen-rider-home",
   "screen-driver-home",
 ];
+
+type LucideWindow = Window & {
+  lucide?: {
+    createIcons: () => void;
+  };
+};
+
+function refreshIcons(): void {
+  (window as LucideWindow).lucide?.createIcons();
+}
 
 export function showScreen(screenId: string): void {
   for (const id of allScreenIds) {
@@ -22,6 +31,7 @@ export function showScreen(screenId: string): void {
       }
     }
   }
+  requestAnimationFrame(refreshIcons);
 }
 
 let toastTimeout: number | null = null;
@@ -33,11 +43,16 @@ export function showToast(message: string, type: "success" | "error" | "info" = 
   const toast = document.createElement("div");
   toast.id = "toast-container";
   toast.className = `toast toast-${type}`;
-  toast.innerHTML = `
-    <span class="toast-icon">${type === "success" ? "✓" : type === "error" ? "✕" : "ℹ"}</span>
-    <span class="toast-message">${message}</span>
-  `;
 
+  const icon = document.createElement("span");
+  icon.className = "toast-icon";
+  icon.textContent = type === "success" ? "OK" : type === "error" ? "!" : "i";
+
+  const text = document.createElement("span");
+  text.className = "toast-message";
+  text.textContent = message;
+
+  toast.append(icon, text);
   document.body.appendChild(toast);
   requestAnimationFrame(() => {
     toast.classList.add("toast-visible");
@@ -52,11 +67,12 @@ export function showToast(message: string, type: "success" | "error" | "info" = 
 export function setLoading(button: HTMLButtonElement, loading: boolean): void {
   if (loading) {
     button.disabled = true;
-    button.dataset.originalText = button.textContent || "";
+    button.dataset.originalHtml = button.innerHTML;
     button.innerHTML = `<span class="spinner"></span>`;
   } else {
     button.disabled = false;
-    button.textContent = button.dataset.originalText || "Submit";
+    button.innerHTML = button.dataset.originalHtml || "Submit";
+    refreshIcons();
   }
 }
 
