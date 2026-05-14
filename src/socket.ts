@@ -77,4 +77,88 @@ export function connectRealtimeSocket(
     state.pendingMessages = [];
     options.onStatus?.("closed");
   }
+
+  function connect(): void {
+    clearTimers();
+    options.onStatus?.(state.socket ? "reconnecting" : "connecting");
+
+    const socket = new WebSocket(buildSocketUrl(path));
+    state.socket = socket;
+
+    socket.onopen = () => {
+      state.reconnectDelay = 800;
+      options.onStatus?.("open");
+      options.onOpen?.();
+      flushPendingMessages();
+      startHeartbeat();
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        options.onMessage(JSON.parse(event.data));
+      } catch {
+        options.onMessage({ type: "raw", payload: event.data });
+      }
+    };
+
+    socket.onerror = () => {
+      options.onStatus?.("closed");
+    };
+
+    socket.onclose = () => {
+      stopHeartbeat();
+      options.onClose?.();
+
+      if (state.closedByClient || options.reconnect === false) {
+        options.onStatus?.("closed");
+        return;
+      }
+
+      options.onStatus?.("reconnecting");
+      const delay = state.reconnectDelay;
+      state.reconnectDelay = Math.min(state.reconnectDelay * 1.8, MAX_RECONNECT_MS);
+      state.reconnectTimer = window.setTimeout(connect, delay);
+    };
+  }
+
+  function flushPendingMessages(): void {
+    const messages = [...state.pendingMessages];
+    state.pendingMessages = [];
+
+    for (const message of messages) {
+      sendJson(message);
+    }
+  }
+
+  function startHeartbeat(): void {
+    stopHeartbeat();
+    state.heartbeatTimer = window.setInterval(() => {
+      sendJson({ type: "ping", sent_at: new Date().toISOString() });
+    }, HEARTBEAT_MS);
+  }
+
+  function clearTimers(): void {
+    if (state.reconnectTimer) {
+      window.clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = null;
+    }
+    stopHeartbeat();
+  }
+
+  function stopHeartbeat(): void {
+    if (state.heartbeatTimer) {
+      window.clearInterval(state.heartbeatTimer);
+      state.heartbeatTimer = null;
+    }
+  }
+
+  connect();
+
+  return {
+    get readyState() {
+      return state.socket?.readyState ?? WebSocket.CLOSED;
+    },
+    sendJson,
+    close,
+  };
 }
