@@ -103,6 +103,30 @@ function fitTrackingBounds(): void {
   }
 }
 
+export function setRoute(points: LatLng[]): void {
+  if (!map || points.length < 2) return;
+  if (routeLine) map.removeLayer(routeLine);
+
+  const newRouteLine = L.polyline(
+    points.map((point) => [point.lat, point.lng]),
+    {
+      color: "#1f9d61",
+      weight: 6,
+      opacity: 0.88,
+      lineCap: "round",
+      lineJoin: "round",
+    }
+  ).addTo(map);
+  routeLine = newRouteLine;
+
+  map.fitBounds(newRouteLine.getBounds(), { padding: [90, 90] });
+}
+
+export function clearRoute(): void {
+  if (!map || !routeLine) return;
+  map.removeLayer(routeLine);
+  routeLine = null;
+}
 
 export function clearMarkers(): void {
   if (!map) return;
