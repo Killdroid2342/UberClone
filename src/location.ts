@@ -117,3 +117,42 @@ function updateConfirmButton(): void {
   }
 }
 
+async function updateTripEstimate(): Promise<void> {
+  updateConfirmButton();
+  const currentRequestId = ++estimateRequestId;
+
+  if (!selectedPickup || !selectedDest) {
+    clearRoute();
+    setEstimateIdle();
+    return;
+  }
+
+  setEstimateLoading();
+
+  try {
+    const estimate = await getRouteEstimate(
+      { lat: selectedPickup.lat, lng: selectedPickup.lng },
+      { lat: selectedDest.lat, lng: selectedDest.lng }
+    );
+    if (currentRequestId !== estimateRequestId) return;
+
+    setRoute(estimate.route);
+    setEstimateValues(estimate);
+  } catch {
+    if (currentRequestId !== estimateRequestId) return;
+    setEstimateError();
+  }
+}
+
+function setEstimateIdle(): void {
+  setText("ride-eta", "Choose route");
+  setText("ride-distance", "--");
+  setText("ride-fare", "--");
+}
+
+function setEstimateLoading(): void {
+  setText("ride-eta", "Estimating...");
+  setText("ride-distance", "--");
+  setText("ride-fare", "--");
+}
+
