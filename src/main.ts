@@ -1,10 +1,43 @@
 import { showScreen, showToast, setLoading, getFormData, validateEmail, validateRequired } from "./ui.js";
-import { signupRider, loginRider, signupDriver, loginDriver, getMe, setToken, getToken, clearToken, requestRide } from "./api.js";
-import { initMap } from "./map.js";
+import {
+  signupRider,
+  loginRider,
+  signupDriver,
+  loginDriver,
+  getMe,
+  setToken,
+  getToken,
+  clearToken,
+  requestRide,
+  connectRideSocket,
+  connectDriverSocket,
+  updateDriverLocation,
+  updateRiderLocation,
+  getDriverRideRequest,
+  acceptRide,
+  rejectRide,
+} from "./api.js";
+import { clearRealtimeMarkers, initMap, setDriverMarker, setRiderMarker } from "./map.js";
 import { initLocationSearch, getSelectedPickup, getSelectedDest } from "./location.js";
-import type { UserProfile } from "./types.js";
+import {
+  DEFAULT_CENTER,
+  LOCATION_PUBLISH_DISTANCE_METERS,
+  LOCATION_PUBLISH_INTERVAL_MS,
+} from "./config.js";
+import type { RealtimeSocket } from "./socket.js";
+import type { LatLng, Ride, UserProfile } from "./types.js";
 
 let currentUser: UserProfile | null = null;
+let currentRiderRideSocket: RealtimeSocket | null = null;
+let currentDriverSocket: RealtimeSocket | null = null;
+let activeDriverRide: Ride | null = null;
+let activeRiderRideId: string | null = null;
+let driverLocationWatchId: number | null = null;
+let riderLocationWatchId: number | null = null;
+let lastDriverLocationSentAt = 0;
+let lastRiderLocationSentAt = 0;
+let lastDriverLocation: LatLng | null = null;
+let lastRiderLocation: LatLng | null = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   bindAll();
@@ -14,10 +47,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       const user = await getMe();
       currentUser = user;
       if (user.role === "rider") {
-        showScreen("screen-rider-home");
-        setTimeout(() => { initMap("map"); initLocationSearch(); }, 100);
+        showRiderHome();
       } else {
-        showScreen("screen-driver-home");
+        showDriverHome(user);
       }
       showToast(`Welcome back, ${user.name}!`, "success");
       return;
@@ -40,13 +72,48 @@ function bindAll(): void {
   bindClick("link-back-welcome-d", () => showScreen("screen-welcome"));
   bindClick("link-back-welcome-rs", () => showScreen("screen-welcome"));
   bindClick("link-back-welcome-ds", () => showScreen("screen-welcome"));
-  bindClick("btn-logout-rider", () => { clearToken(); showScreen("screen-welcome"); showToast("Logged out", "info"); });
-  bindClick("btn-logout-driver", () => { clearToken(); showScreen("screen-welcome"); showToast("Logged out", "info"); });
+  bindClick("btn-logout-rider", () => { logout(); });
+  bindClick("btn-logout-driver", () => { logout(); });
   bindRiderLogin();
   bindRiderSignup();
   bindDriverLogin();
   bindDriverSignup();
   bindConfirmRide();
+  bindDriverRideActions();
+}
+
+function showRiderHome(): void {
+  stopRiderLocationTracking();
+  showScreen("screen-rider-home");
+  setTimeout(() => {
+    initMap("map");
+    initLocationSearch();
+    resetRiderRideStatus();
+    clearRealtimeMarkers();
+  }, 100);
+}
+
+function showDriverHome(user: UserProfile): void {
+  showScreen("screen-driver-home");
+  renderDriverRequest(null);
+  connectDriverUpdates(user.id);
+  startDriverLocationTracking();
+  void refreshDriverRideRequest();
+}
+
+function logout(): void {
+  currentRiderRideSocket?.close();
+  currentDriverSocket?.close();
+  stopDriverLocationTracking();
+  stopRiderLocationTracking();
+  currentRiderRideSocket = null;
+  currentDriverSocket = null;
+  activeDriverRide = null;
+  activeRiderRideId = null;
+  currentUser = null;
+  clearToken();
+  showScreen("screen-welcome");
+  showToast("Logged out", "info");
 }
 
 function bindRiderLogin(): void {
@@ -66,8 +133,7 @@ function bindRiderLogin(): void {
       setToken(res.token);
       currentUser = res.user;
       showToast(`Welcome, ${res.user.name}!`, "success");
-      showScreen("screen-rider-home");
-      setTimeout(() => { initMap("map"); initLocationSearch(); }, 100);
+      showRiderHome();
     } catch (err: any) {
       showToast(err.message || "Login failed", "error");
     } finally {
@@ -119,7 +185,7 @@ function bindDriverLogin(): void {
       setToken(res.token);
       currentUser = res.user;
       showToast(`Welcome, ${res.user.name}!`, "success");
-      showScreen("screen-driver-home");
+      showDriverHome(res.user);
     } catch (err: any) {
       showToast(err.message || "Login failed", "error");
     } finally {
@@ -191,6 +257,40 @@ function bindDriverSignup(): void {
   });
 }
 
+function connectRiderRideUpdates(ride: Ride): void {
+  currentRiderRideSocket?.close();
+  activeRiderRideId = ride.id;
+  currentRiderRideSocket = connectRideSocket(ride.id, (data) => {
+    if (data.type === "ride_update") {
+      renderRideLocations(data.ride);
+      renderRiderRideStatus(data.ride);
+      if (data.ride.status === "no_drivers_available") {
+        stopRiderLocationTracking();
+      }
+    }
+  });
+  startRiderLocationTracking(ride.id);
+}
+
+function connectDriverUpdates(driverId: string): void {
+  currentDriverSocket?.close();
+  currentDriverSocket = connectDriverSocket(driverId, (data) => {
+    if (data.type === "ride_request" || data.type === "ride_update") {
+      renderDriverRequest(data.ride);
+      if (data.type === "ride_request" && data.ride?.status === "pending_driver") {
+        showToast("New ride request", "info");
+      }
+    }
+    if (data.type === "driver_location_update") {
+      setText("driver-location-status", "Online");
+    }
+    if (data.type === "ride_cleared") {
+      renderDriverRequest(null);
+    }
+  });
+}
+
+
 function bindClick(id: string, handler: () => void): void {
   const el = document.getElementById(id);
   if (el) el.addEventListener("click", handler);
@@ -210,9 +310,16 @@ function bindConfirmRide(): void {
 
     setLoading(btn, true);
     try {
-      await requestRide(currentUser.id, { lat: pickup.lat, lng: pickup.lng }, { lat: dest.lat, lng: dest.lng });
-      showToast("Ride requested! Searching for driver...", "success");
-      btn.innerHTML = "Searching for driver...";
+      const ride = await requestRide(
+        currentUser.id,
+        { lat: pickup.lat, lng: pickup.lng },
+        { lat: dest.lat, lng: dest.lng }
+      );
+      setLoading(btn, false);
+      connectRiderRideUpdates(ride);
+      renderRideLocations(ride);
+      renderRiderRideStatus(ride);
+      showToast("Ride requested", "success");
     } catch (err: any) {
       showToast(err.message || "Failed to request ride", "error");
       setLoading(btn, false);
