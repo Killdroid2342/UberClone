@@ -1,4 +1,5 @@
-import { API_URL, WS_URL } from "./config.js";
+import { API_URL } from "./config.js";
+import { connectRealtimeSocket, type RealtimeSocket, type RealtimeSocketOptions } from "./socket.js";
 import type {
   RiderSignupData,
   DriverSignupData,
@@ -6,6 +7,11 @@ import type {
   LoginResponse,
   UserProfile,
   LocationResult,
+  LatLng,
+  RouteEstimate,
+  Ride,
+  RideSocketMessage,
+  DriverSocketMessage,
 } from "./types.js";
 
 export function getToken(): string | null {
@@ -111,11 +117,25 @@ export async function searchLocations(query: string): Promise<LocationResult[]> 
   return res.json();
 }
 
+export async function getRouteEstimate(
+  pickup: LatLng,
+  destination: LatLng
+): Promise<RouteEstimate> {
+  const res = await fetch(`${API_URL}/routes/estimate`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ pickup, destination }),
+  });
+
+  if (!res.ok) throw new Error("Failed to estimate route");
+  return res.json();
+}
+
 export async function requestRide(
   riderId: string,
   pickup: { lat: number; lng: number },
   destination: { lat: number; lng: number }
-) {
+): Promise<Ride> {
   const res = await fetch(`${API_URL}/rides`, {
     method: "POST",
     headers: authHeaders(),
@@ -126,16 +146,26 @@ export async function requestRide(
   return res.json();
 }
 
+
+
 export function connectRideSocket(
   rideId: string,
-  onMessage: (data: any) => void
-): WebSocket {
-  const socket = new WebSocket(`${WS_URL}/ws/rides/${rideId}`);
+  onMessage: (data: RideSocketMessage) => void,
+  options: Partial<Omit<RealtimeSocketOptions, "onMessage">> = {}
+): RealtimeSocket {
+  return connectRealtimeSocket(`/ws/rides/${rideId}`, {
+    ...options,
+    onMessage: (data) => onMessage(data as RideSocketMessage),
+  });
+}
 
-  socket.onopen = () => console.log("WebSocket connected");
-  socket.onmessage = (event) => onMessage(JSON.parse(event.data));
-  socket.onerror = (error) => console.error("WebSocket error:", error);
-  socket.onclose = () => console.log("WebSocket closed");
-
-  return socket;
+export function connectDriverSocket(
+  driverId: string,
+  onMessage: (data: DriverSocketMessage) => void,
+  options: Partial<Omit<RealtimeSocketOptions, "onMessage">> = {}
+): RealtimeSocket {
+  return connectRealtimeSocket(`/ws/drivers/${driverId}`, {
+    ...options,
+    onMessage: (data) => onMessage(data as DriverSocketMessage),
+  });
 }
