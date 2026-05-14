@@ -156,3 +156,37 @@ function setEstimateLoading(): void {
   setText("ride-fare", "--");
 }
 
+function setEstimateError(): void {
+  clearRoute();
+  setText("ride-eta", "Unavailable");
+  setText("ride-distance", "--");
+  setText("ride-fare", "--");
+}
+
+function setEstimateValues(estimate: RouteEstimate): void {
+  setText("ride-eta", formatDuration(estimate.duration_min));
+  setText("ride-distance", formatDistance(estimate.distance_km));
+  setText("ride-fare", formatFare(estimate.fare));
+}
+
+function setText(id: string, value: string): void {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function formatDuration(minutes: number): string {
+  const rounded = Math.max(1, Math.round(minutes));
+  if (rounded < 60) return `${rounded} min`;
+  const hours = Math.floor(rounded / 60);
+  const mins = rounded % 60;
+  return mins ? `${hours} hr ${mins} min` : `${hours} hr`;
+}
+
+function formatDistance(distanceKm: number): string {
+  const miles = distanceKm * 0.621371;
+  return `${miles < 10 ? miles.toFixed(1) : Math.round(miles)} mi`;
+}
+
+function formatFare(fare: number): string {
+  return `$${fare.toFixed(2)}`;
+}
