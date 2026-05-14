@@ -171,7 +171,42 @@ export async function updateRiderLocation(
   return res.json();
 }
 
+export async function getDriverRideRequest(): Promise<Ride | null> {
+  const res = await fetch(`${API_URL}/drivers/me/ride-request`, {
+    headers: authHeaders(),
+  });
 
+  if (!res.ok) throw new Error("Failed to load ride request");
+  return res.json();
+}
+
+export async function acceptRide(rideId: string): Promise<Ride> {
+  const res = await fetch(`${API_URL}/rides/${rideId}/accept`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to accept ride");
+  }
+
+  return res.json();
+}
+
+export async function rejectRide(rideId: string): Promise<Ride> {
+  const res = await fetch(`${API_URL}/rides/${rideId}/reject`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to reject ride");
+  }
+
+  return res.json();
+}
 
 export function connectRideSocket(
   rideId: string,
