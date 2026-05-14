@@ -3,3 +3,5 @@ export const WS_URL = "ws://localhost:8000";
 export const DEFAULT_CENTER: [number, number] = [51.505, -0.09];
 export const DEFAULT_ZOOM = 13;
 export const SEARCH_DEBOUNCE_MS = 350;
+export const LOCATION_PUBLISH_INTERVAL_MS = 4000;
+export const LOCATION_PUBLISH_DISTANCE_METERS = 12;
