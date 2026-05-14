@@ -1,28 +1,33 @@
 import type { Map, Marker, Polyline, DivIcon } from "leaflet";
 declare const L: any;
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from "./config.js";
+import type { LatLng } from "./types.js";
 
 let map: Map | null = null;
 let pickupMarker: Marker | null = null;
 let destinationMarker: Marker | null = null;
+let driverMarker: Marker | null = null;
+let riderMarker: Marker | null = null;
 let routeLine: Polyline | null = null;
 
-function createIcon(color: string, emoji: string): DivIcon {
+function createIcon(color: string, label: string): DivIcon {
   return L.divIcon({
-    html: `<div style="background:${color};width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 12px ${color}88;border:3px solid white">${emoji}</div>`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
+    html: `<div class="map-marker" style="--marker-color:${color}"><span>${label}</span></div>`,
+    iconSize: [38, 38],
+    iconAnchor: [19, 19],
     className: "custom-marker",
   });
 }
 
-const pickupIcon = createIcon("#00d2a0", "📍");
-const destinationIcon = createIcon("#6c5ce7", "🏁");
+const pickupIcon = createIcon("#1f9d61", "P");
+const destinationIcon = createIcon("#f1a51d", "D");
+const driverIcon = createIcon("#2f67f6", "C");
+const riderIcon = createIcon("#111511", "R");
 
 export function initMap(containerId: string): Map {
   if (map) map.remove();
   map = L.map(containerId, { zoomControl: false }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
     attribution: '&copy; OSM &copy; CARTO',
     subdomains: "abcd",
     maxZoom: 20,
@@ -53,13 +58,30 @@ export function setDestinationMarker(lat: number, lng: number): void {
   fitBounds();
 }
 
+export function setDriverMarker(location: LatLng): void {
+  if (!map) return;
+  const latLng: [number, number] = [location.lat, location.lng];
+  if (driverMarker) driverMarker.setLatLng(latLng);
+  else driverMarker = L.marker(latLng, { icon: driverIcon }).addTo(map);
+  driverMarker!.bindPopup("Driver");
+  fitTrackingBounds();
+}
+
+export function setRiderMarker(location: LatLng): void {
+  if (!map) return;
+  const latLng: [number, number] = [location.lat, location.lng];
+  if (riderMarker) riderMarker.setLatLng(latLng);
+  else riderMarker = L.marker(latLng, { icon: riderIcon }).addTo(map);
+  riderMarker!.bindPopup("You");
+}
+
 function fitBounds(): void {
   if (!map) return;
   if (pickupMarker && destinationMarker) {
     if (routeLine) map.removeLayer(routeLine);
     const p = pickupMarker.getLatLng();
     const d = destinationMarker.getLatLng();
-    routeLine = L.polyline([p, d], { color: "#6c5ce7", weight: 4, opacity: 0.8, dashArray: "10, 10" }).addTo(map);
+    routeLine = L.polyline([p, d], { color: "#111511", weight: 5, opacity: 0.76, dashArray: "8, 10" }).addTo(map);
     map.fitBounds(L.latLngBounds([p, d]), { padding: [80, 80] });
   } else if (pickupMarker) {
     map.setView(pickupMarker.getLatLng(), 15);
@@ -68,11 +90,32 @@ function fitBounds(): void {
   }
 }
 
+function fitTrackingBounds(): void {
+  if (!map || !driverMarker) return;
+  const points = [driverMarker.getLatLng()];
+
+  if (pickupMarker) points.push(pickupMarker.getLatLng());
+  if (destinationMarker) points.push(destinationMarker.getLatLng());
+  if (riderMarker) points.push(riderMarker.getLatLng());
+
+  if (points.length > 1) {
+    map.fitBounds(L.latLngBounds(points), { padding: [90, 90], maxZoom: 16 });
+  }
+}
+
+
 export function clearMarkers(): void {
   if (!map) return;
   if (pickupMarker) { map.removeLayer(pickupMarker); pickupMarker = null; }
   if (destinationMarker) { map.removeLayer(destinationMarker); destinationMarker = null; }
+  clearRealtimeMarkers();
   if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+}
+
+export function clearRealtimeMarkers(): void {
+  if (!map) return;
+  if (driverMarker) { map.removeLayer(driverMarker); driverMarker = null; }
+  if (riderMarker) { map.removeLayer(riderMarker); riderMarker = null; }
 }
 
 export function getMap(): Map | null { return map; }
