@@ -103,3 +103,15 @@ export type Ride = {
   accepted_at?: string;
 };
 
+export type RideSocketMessage =
+  | { type: "ride_update"; ride: Ride }
+  | { type: "driver_location_update"; location: LatLng; ride?: Ride }
+  | { type: "rider_location_update"; location: LatLng; ride?: Ride }
+  | { type: "pong"; sent_at?: string };
+
+export type DriverSocketMessage =
+  | { type: "ride_request"; ride: Ride }
+  | { type: "ride_update"; ride: Ride }
+  | { type: "ride_cleared"; ride_id: string }
+  | { type: "driver_location_update"; location: LatLng; ride?: Ride }
+  | { type: "pong"; sent_at?: string };
