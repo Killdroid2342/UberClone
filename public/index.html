@@ -3,302 +3,518 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MyUber — Ride Anywhere</title>
+  <title>MyUber - Ride Anywhere</title>
   <meta name="description" content="MyUber ride-sharing app. Request rides, become a driver, and explore your city." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-
-
-
-
-<section id="screen-welcome" class="screen hidden">
-  <div class="welcome-container">
-    <div class="welcome-glow"></div>
-    <div class="logo-area">
-      <div class="logo-icon">
-        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="24" cy="24" r="22" stroke="url(#grad1)" stroke-width="3" fill="none"/>
-          <path d="M16 28 C16 20, 24 12, 32 20 C32 26, 24 34, 24 34 C24 34, 16 34, 16 28Z" fill="url(#grad1)"/>
-          <circle cx="24" cy="24" r="4" fill="#0a0a0f"/>
-          <defs>
-            <linearGradient id="grad1" x1="0" y1="0" x2="48" y2="48">
-              <stop offset="0%" stop-color="#6c5ce7"/>
-              <stop offset="100%" stop-color="#00d2a0"/>
-            </linearGradient>
-          </defs>
-        </svg>
+<section id="screen-welcome" class="screen screen-welcome hidden">
+  <div class="welcome-shell">
+    <div class="welcome-hero">
+      <div class="brand-row">
+        <div class="brand-mark" aria-hidden="true">MU</div>
+        <div>
+          <p class="eyebrow">City mobility</p>
+          <h1>MyUber</h1>
+        </div>
       </div>
-      <h1 class="logo-text">My<span class="accent">Uber</span></h1>
-      <p class="tagline">Your ride, your way</p>
+      <p class="welcome-copy">Request a ride, track the route, or switch into driver mode from one calm workspace.</p>
+
+      <div class="route-preview" aria-hidden="true">
+        <div class="route-preview-top">
+          <span>Live route</span>
+          <strong>4 min</strong>
+        </div>
+        <div class="route-line">
+          <span class="route-node start"></span>
+          <span class="route-dash"></span>
+          <span class="route-car"><i data-lucide="car-front"></i></span>
+          <span class="route-dash"></span>
+          <span class="route-node end"></span>
+        </div>
+        <div class="route-meta">
+          <div>
+            <span>Pickup</span>
+            <strong>Soho</strong>
+          </div>
+          <div>
+            <span>Fare</span>
+            <strong>$18.40</strong>
+          </div>
+          <div>
+            <span>Driver</span>
+            <strong>2 nearby</strong>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="role-cards">
-      <button id="btn-role-rider" class="role-card">
-        <div class="role-icon">🚗</div>
-        <h2>Ride</h2>
-        <p>Get picked up in minutes</p>
+    <div class="welcome-actions">
+      <p class="section-label">Continue as</p>
+      <button id="btn-role-rider" class="role-card role-card-rider">
+        <span class="role-icon" aria-hidden="true"><i data-lucide="car-front"></i></span>
+        <span class="role-copy">
+          <strong>Rider</strong>
+          <small>Book a car and follow the trip in real time.</small>
+        </span>
+        <span class="role-arrow" aria-hidden="true"><i data-lucide="arrow-right"></i></span>
       </button>
-      <button id="btn-role-driver" class="role-card">
-        <div class="role-icon">🚀</div>
-        <h2>Drive</h2>
-        <p>Earn money on your schedule</p>
+      <button id="btn-role-driver" class="role-card role-card-driver">
+        <span class="role-icon" aria-hidden="true"><i data-lucide="badge-dollar-sign"></i></span>
+        <span class="role-copy">
+          <strong>Driver</strong>
+          <small>Manage onboarding and get ready for requests.</small>
+        </span>
+        <span class="role-arrow" aria-hidden="true"><i data-lucide="arrow-right"></i></span>
       </button>
+
+      <div class="welcome-stats" aria-hidden="true">
+        <div>
+          <strong>24/7</strong>
+          <span>coverage</span>
+        </div>
+        <div>
+          <strong>4.9</strong>
+          <span>rating</span>
+        </div>
+      </div>
     </div>
   </div>
 </section>
 
+<section id="screen-rider-login" class="screen screen-auth hidden">
+  <div class="auth-shell">
+    <aside class="auth-aside auth-aside-rider">
+      <div class="mini-map" aria-hidden="true">
+        <span class="map-road road-a"></span>
+        <span class="map-road road-b"></span>
+        <span class="map-road road-c"></span>
+        <span class="map-pin pin-a"></span>
+        <span class="map-pin pin-b"></span>
+      </div>
+      <p class="eyebrow">Rider access</p>
+      <h2>Back to your next trip.</h2>
+      <p>Saved places, location search, and pickup confirmation are ready when you sign in.</p>
+    </aside>
 
-
-
-<section id="screen-rider-login" class="screen hidden">
-  <div class="auth-container">
-    <button id="link-back-welcome-r" class="back-btn">← Back</button>
-    <div class="auth-header">
-      <div class="auth-icon">🚗</div>
-      <h1>Welcome back</h1>
-      <p>Sign in to your rider account</p>
+    <div class="auth-container">
+      <button id="link-back-welcome-r" class="back-btn" type="button">
+        <i data-lucide="chevron-left"></i>
+        <span>Back</span>
+      </button>
+      <div class="auth-header">
+        <div class="auth-icon" aria-hidden="true"><i data-lucide="car-front"></i></div>
+        <h1>Welcome back</h1>
+        <p>Sign in to your rider account</p>
+      </div>
+      <form id="form-rider-login" class="auth-form" autocomplete="off">
+        <div class="input-group">
+          <input type="email" name="email" id="rider-login-email" placeholder=" " required />
+          <label for="rider-login-email">Email address</label>
+        </div>
+        <div class="input-group">
+          <input type="password" name="password" id="rider-login-pass" placeholder=" " required />
+          <label for="rider-login-pass">Password</label>
+        </div>
+        <button type="submit" class="btn-primary">
+          <span>Sign in</span>
+          <i data-lucide="arrow-right"></i>
+        </button>
+      </form>
+      <p class="auth-switch">Do not have an account? <a id="link-rider-signup" href="#">Sign up</a></p>
     </div>
-    <form id="form-rider-login" class="auth-form" autocomplete="off">
-      <div class="input-group">
-        <input type="email" name="email" id="rider-login-email" placeholder=" " required />
-        <label for="rider-login-email">Email address</label>
-      </div>
-      <div class="input-group">
-        <input type="password" name="password" id="rider-login-pass" placeholder=" " required />
-        <label for="rider-login-pass">Password</label>
-      </div>
-      <button type="submit" class="btn-primary">Sign In</button>
-    </form>
-    <p class="auth-switch">Don't have an account? <a id="link-rider-signup" href="#">Sign up</a></p>
   </div>
 </section>
 
+<section id="screen-rider-signup" class="screen screen-auth hidden">
+  <div class="auth-shell">
+    <aside class="auth-aside auth-aside-rider">
+      <div class="mini-map" aria-hidden="true">
+        <span class="map-road road-a"></span>
+        <span class="map-road road-b"></span>
+        <span class="map-road road-c"></span>
+        <span class="map-pin pin-a"></span>
+        <span class="map-pin pin-b"></span>
+      </div>
+      <p class="eyebrow">Rider signup</p>
+      <h2>Start with a clean ride profile.</h2>
+      <p>Your pickup flow stays simple: account, location, destination, confirm.</p>
+    </aside>
 
-
-
-<section id="screen-rider-signup" class="screen hidden">
-  <div class="auth-container">
-    <button id="link-back-welcome-rs" class="back-btn">← Back</button>
-    <div class="auth-header">
-      <div class="auth-icon">✨</div>
-      <h1>Create account</h1>
-      <p>Start riding in minutes</p>
+    <div class="auth-container">
+      <button id="link-back-welcome-rs" class="back-btn" type="button">
+        <i data-lucide="chevron-left"></i>
+        <span>Back</span>
+      </button>
+      <div class="auth-header">
+        <div class="auth-icon" aria-hidden="true"><i data-lucide="sparkles"></i></div>
+        <h1>Create account</h1>
+        <p>Start riding in minutes</p>
+      </div>
+      <form id="form-rider-signup" class="auth-form" autocomplete="off">
+        <div class="input-group">
+          <input type="text" name="name" id="rider-signup-name" placeholder=" " required />
+          <label for="rider-signup-name">Full name</label>
+        </div>
+        <div class="input-group">
+          <input type="email" name="email" id="rider-signup-email" placeholder=" " required />
+          <label for="rider-signup-email">Email address</label>
+        </div>
+        <div class="input-group">
+          <input type="tel" name="phone" id="rider-signup-phone" placeholder=" " required />
+          <label for="rider-signup-phone">Phone number</label>
+        </div>
+        <div class="input-group">
+          <input type="password" name="password" id="rider-signup-pass" placeholder=" " required minlength="6" />
+          <label for="rider-signup-pass">Password (6+ characters)</label>
+        </div>
+        <button type="submit" class="btn-primary">
+          <span>Create account</span>
+          <i data-lucide="arrow-right"></i>
+        </button>
+      </form>
+      <p class="auth-switch">Already have an account? <a id="link-rider-login" href="#">Sign in</a></p>
     </div>
-    <form id="form-rider-signup" class="auth-form" autocomplete="off">
-      <div class="input-group">
-        <input type="text" name="name" id="rider-signup-name" placeholder=" " required />
-        <label for="rider-signup-name">Full name</label>
-      </div>
-      <div class="input-group">
-        <input type="email" name="email" id="rider-signup-email" placeholder=" " required />
-        <label for="rider-signup-email">Email address</label>
-      </div>
-      <div class="input-group">
-        <input type="tel" name="phone" id="rider-signup-phone" placeholder=" " required />
-        <label for="rider-signup-phone">Phone number</label>
-      </div>
-      <div class="input-group">
-        <input type="password" name="password" id="rider-signup-pass" placeholder=" " required minlength="6" />
-        <label for="rider-signup-pass">Password (6+ characters)</label>
-      </div>
-      <button type="submit" class="btn-primary">Create Account</button>
-    </form>
-    <p class="auth-switch">Already have an account? <a id="link-rider-login" href="#">Sign in</a></p>
   </div>
 </section>
 
+<section id="screen-driver-login" class="screen screen-auth hidden">
+  <div class="auth-shell">
+    <aside class="auth-aside auth-aside-driver">
+      <div class="driver-card-preview" aria-hidden="true">
+        <div class="driver-avatar"><i data-lucide="user-round"></i></div>
+        <div>
+          <span>Today</span>
+          <strong>$124.80</strong>
+        </div>
+        <div class="driver-card-line"></div>
+      </div>
+      <p class="eyebrow">Driver access</p>
+      <h2>Your dashboard is ready.</h2>
+      <p>Sign in to review your account status and prepare for incoming rides.</p>
+    </aside>
 
-
-
-<section id="screen-driver-login" class="screen hidden">
-  <div class="auth-container">
-    <button id="link-back-welcome-d" class="back-btn">← Back</button>
-    <div class="auth-header">
-      <div class="auth-icon">🚀</div>
-      <h1>Driver sign in</h1>
-      <p>Access your driver dashboard</p>
+    <div class="auth-container">
+      <button id="link-back-welcome-d" class="back-btn" type="button">
+        <i data-lucide="chevron-left"></i>
+        <span>Back</span>
+      </button>
+      <div class="auth-header">
+        <div class="auth-icon" aria-hidden="true"><i data-lucide="car-front"></i></div>
+        <h1>Driver sign in</h1>
+        <p>Access your driver dashboard</p>
+      </div>
+      <form id="form-driver-login" class="auth-form" autocomplete="off">
+        <div class="input-group">
+          <input type="email" name="email" id="driver-login-email" placeholder=" " required />
+          <label for="driver-login-email">Email address</label>
+        </div>
+        <div class="input-group">
+          <input type="password" name="password" id="driver-login-pass" placeholder=" " required />
+          <label for="driver-login-pass">Password</label>
+        </div>
+        <button type="submit" class="btn-primary btn-driver">
+          <span>Sign in</span>
+          <i data-lucide="arrow-right"></i>
+        </button>
+      </form>
+      <p class="auth-switch">New driver? <a id="link-driver-signup" href="#">Apply now</a></p>
     </div>
-    <form id="form-driver-login" class="auth-form" autocomplete="off">
-      <div class="input-group">
-        <input type="email" name="email" id="driver-login-email" placeholder=" " required />
-        <label for="driver-login-email">Email address</label>
-      </div>
-      <div class="input-group">
-        <input type="password" name="password" id="driver-login-pass" placeholder=" " required />
-        <label for="driver-login-pass">Password</label>
-      </div>
-      <button type="submit" class="btn-primary btn-driver">Sign In</button>
-    </form>
-    <p class="auth-switch">New driver? <a id="link-driver-signup" href="#">Apply now</a></p>
   </div>
 </section>
 
-
-
-
-<section id="screen-driver-signup" class="screen hidden">
-  <div class="auth-container auth-container-wide">
-    <button id="link-back-welcome-ds" class="back-btn">← Back</button>
-    <div class="auth-header">
-      <div class="auth-icon">🚀</div>
-      <h1>Become a driver</h1>
-      <p>Complete your onboarding in 3 easy steps</p>
-    </div>
-
-    
-    <div class="step-indicator">
-      <div class="step active"><span>1</span><small>Personal</small></div>
-      <div class="step-line"></div>
-      <div class="step"><span>2</span><small>Vehicle</small></div>
-      <div class="step-line"></div>
-      <div class="step"><span>3</span><small>License</small></div>
-    </div>
-
-    <form id="form-driver-signup" class="auth-form" autocomplete="off">
-      
-      <div id="driver-step-1">
-        <div class="input-group">
-          <input type="text" name="name" id="driver-signup-name" placeholder=" " required />
-          <label for="driver-signup-name">Full name</label>
+<section id="screen-driver-signup" class="screen screen-auth hidden">
+  <div class="auth-shell auth-shell-wide">
+    <aside class="auth-aside auth-aside-driver">
+      <div class="driver-card-preview" aria-hidden="true">
+        <div class="driver-avatar"><i data-lucide="shield-check"></i></div>
+        <div>
+          <span>Onboarding</span>
+          <strong>3 steps</strong>
         </div>
-        <div class="input-group">
-          <input type="email" name="email" id="driver-signup-email" placeholder=" " required />
-          <label for="driver-signup-email">Email address</label>
-        </div>
-        <div class="input-group">
-          <input type="tel" name="phone" id="driver-signup-phone" placeholder=" " required />
-          <label for="driver-signup-phone">Phone number</label>
-        </div>
-        <div class="input-group">
-          <input type="password" name="password" id="driver-signup-pass" placeholder=" " required minlength="6" />
-          <label for="driver-signup-pass">Password (6+ characters)</label>
-        </div>
-        <button type="button" id="btn-driver-step-2" class="btn-primary btn-driver">Continue →</button>
+        <div class="driver-card-line"></div>
+      </div>
+      <p class="eyebrow">Driver signup</p>
+      <h2>Set up the vehicle profile.</h2>
+      <p>We will collect your personal, vehicle, and license details before activation.</p>
+    </aside>
+
+    <div class="auth-container auth-container-wide">
+      <button id="link-back-welcome-ds" class="back-btn" type="button">
+        <i data-lucide="chevron-left"></i>
+        <span>Back</span>
+      </button>
+      <div class="auth-header">
+        <div class="auth-icon" aria-hidden="true"><i data-lucide="badge-check"></i></div>
+        <h1>Become a driver</h1>
+        <p>Complete onboarding in 3 steps</p>
       </div>
 
-      
-      <div id="driver-step-2" style="display:none">
-        <div class="input-row">
+      <div class="step-indicator">
+        <div class="step active"><span>1</span><small>Personal</small></div>
+        <div class="step-line"></div>
+        <div class="step"><span>2</span><small>Vehicle</small></div>
+        <div class="step-line"></div>
+        <div class="step"><span>3</span><small>License</small></div>
+      </div>
+
+      <form id="form-driver-signup" class="auth-form" autocomplete="off">
+        <div id="driver-step-1">
           <div class="input-group">
-            <input type="text" name="vehicle_make" id="d-vmake" placeholder=" " required />
-            <label for="d-vmake">Make</label>
+            <input type="text" name="name" id="driver-signup-name" placeholder=" " required />
+            <label for="driver-signup-name">Full name</label>
           </div>
           <div class="input-group">
-            <input type="text" name="vehicle_model" id="d-vmodel" placeholder=" " required />
-            <label for="d-vmodel">Model</label>
-          </div>
-        </div>
-        <div class="input-row">
-          <div class="input-group">
-            <input type="number" name="vehicle_year" id="d-vyear" placeholder=" " required min="2000" max="2030" />
-            <label for="d-vyear">Year</label>
+            <input type="email" name="email" id="driver-signup-email" placeholder=" " required />
+            <label for="driver-signup-email">Email address</label>
           </div>
           <div class="input-group">
-            <input type="text" name="vehicle_color" id="d-vcolor" placeholder=" " required />
-            <label for="d-vcolor">Color</label>
+            <input type="tel" name="phone" id="driver-signup-phone" placeholder=" " required />
+            <label for="driver-signup-phone">Phone number</label>
+          </div>
+          <div class="input-group">
+            <input type="password" name="password" id="driver-signup-pass" placeholder=" " required minlength="6" />
+            <label for="driver-signup-pass">Password (6+ characters)</label>
+          </div>
+          <button type="button" id="btn-driver-step-2" class="btn-primary btn-driver">
+            <span>Continue</span>
+            <i data-lucide="arrow-right"></i>
+          </button>
+        </div>
+
+        <div id="driver-step-2" style="display:none">
+          <div class="input-row">
+            <div class="input-group">
+              <input type="text" name="vehicle_make" id="d-vmake" placeholder=" " required />
+              <label for="d-vmake">Make</label>
+            </div>
+            <div class="input-group">
+              <input type="text" name="vehicle_model" id="d-vmodel" placeholder=" " required />
+              <label for="d-vmodel">Model</label>
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-group">
+              <input type="number" name="vehicle_year" id="d-vyear" placeholder=" " required min="2000" max="2030" />
+              <label for="d-vyear">Year</label>
+            </div>
+            <div class="input-group">
+              <input type="text" name="vehicle_color" id="d-vcolor" placeholder=" " required />
+              <label for="d-vcolor">Color</label>
+            </div>
+          </div>
+          <div class="input-group">
+            <input type="text" name="vehicle_plate" id="d-vplate" placeholder=" " required />
+            <label for="d-vplate">License plate</label>
+          </div>
+          <div class="btn-row">
+            <button type="button" id="btn-driver-back-1" class="btn-secondary">
+              <i data-lucide="chevron-left"></i>
+              <span>Back</span>
+            </button>
+            <button type="button" id="btn-driver-step-3" class="btn-primary btn-driver">
+              <span>Continue</span>
+              <i data-lucide="arrow-right"></i>
+            </button>
           </div>
         </div>
-        <div class="input-group">
-          <input type="text" name="vehicle_plate" id="d-vplate" placeholder=" " required />
-          <label for="d-vplate">License plate</label>
-        </div>
-        <div class="btn-row">
-          <button type="button" id="btn-driver-back-1" class="btn-secondary">← Back</button>
-          <button type="button" id="btn-driver-step-3" class="btn-primary btn-driver">Continue →</button>
-        </div>
-      </div>
 
-      
-      <div id="driver-step-3" style="display:none">
-        <div class="input-group">
-          <input type="text" name="license_number" id="d-license" placeholder=" " required />
-          <label for="d-license">Driver's license number</label>
+        <div id="driver-step-3" style="display:none">
+          <div class="input-group">
+            <input type="text" name="license_number" id="d-license" placeholder=" " required />
+            <label for="d-license">Driver's license number</label>
+          </div>
+          <div class="onboarding-note">
+            <span class="note-icon" aria-hidden="true"><i data-lucide="lock-keyhole"></i></span>
+            <p>Your information is encrypted and securely stored. Driver documents are verified before activation.</p>
+          </div>
+          <div class="btn-row">
+            <button type="button" id="btn-driver-back-2" class="btn-secondary">
+              <i data-lucide="chevron-left"></i>
+              <span>Back</span>
+            </button>
+            <button type="button" id="btn-driver-submit" class="btn-primary btn-driver">
+              <span>Complete signup</span>
+              <i data-lucide="check"></i>
+            </button>
+          </div>
         </div>
-        <div class="onboarding-note">
-          <span class="note-icon">🔒</span>
-          <p>Your information is encrypted and securely stored. We verify all driver documents before activation.</p>
-        </div>
-        <div class="btn-row">
-          <button type="button" id="btn-driver-back-2" class="btn-secondary">← Back</button>
-          <button type="button" id="btn-driver-submit" class="btn-primary btn-driver">Complete Signup</button>
-        </div>
-      </div>
-    </form>
+      </form>
 
-    <p class="auth-switch">Already a driver? <a id="link-driver-login" href="#">Sign in</a></p>
+      <p class="auth-switch">Already a driver? <a id="link-driver-login" href="#">Sign in</a></p>
+    </div>
   </div>
 </section>
 
-
-
-
-<section id="screen-rider-home" class="screen hidden">
+<section id="screen-rider-home" class="screen screen-rider-home hidden">
   <div id="map" class="map-container"></div>
+  <div class="map-shade" aria-hidden="true"></div>
 
-  
+  <div class="app-brand-pill" aria-hidden="true">
+    <span class="brand-mark brand-mark-small">MU</span>
+    <span>MyUber</span>
+  </div>
+
   <div class="search-panel">
     <div class="search-panel-header">
-      <h2>Where to?</h2>
-      <button id="btn-logout-rider" class="logout-btn" title="Logout">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-          <polyline points="16 17 21 12 16 7"/>
-          <line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>
+      <div>
+        <p class="section-label">Book a ride</p>
+        <h2>Where to?</h2>
+      </div>
+      <button id="btn-logout-rider" class="logout-btn" title="Logout" aria-label="Logout" type="button">
+        <i data-lucide="log-out"></i>
       </button>
     </div>
 
     <div class="search-fields">
       <div class="search-field">
-        <span class="search-dot dot-green"></span>
+        <span class="search-dot dot-pickup"></span>
         <input type="text" id="pickup-input" placeholder="Pickup location" autocomplete="off" />
         <div id="pickup-results" class="search-results"></div>
       </div>
       <div class="search-connector"></div>
       <div class="search-field">
-        <span class="search-dot dot-purple"></span>
-        <input type="text" id="dest-input" placeholder="Where to?" autocomplete="off" />
+        <span class="search-dot dot-destination"></span>
+        <input type="text" id="dest-input" placeholder="Destination" autocomplete="off" />
         <div id="dest-results" class="search-results"></div>
       </div>
     </div>
 
+    <div id="ride-estimate-panel" class="ride-options" aria-live="polite">
+      <div>
+        <span>Ride type</span>
+        <strong>Standard</strong>
+      </div>
+      <div>
+        <span>ETA</span>
+        <strong id="ride-eta">Choose route</strong>
+      </div>
+      <div>
+        <span>Distance</span>
+        <strong id="ride-distance">--</strong>
+      </div>
+      <div>
+        <span>Fare</span>
+        <strong id="ride-fare">--</strong>
+      </div>
+    </div>
+
+    <div id="ride-status-card" class="ride-status is-hidden" aria-live="polite">
+      <div class="ride-status-icon" aria-hidden="true"><i data-lucide="radio-tower"></i></div>
+      <div>
+        <h3 id="ride-status-title">Searching for driver</h3>
+        <p id="ride-status-body">Checking nearby online drivers.</p>
+        <strong id="ride-status-meta">Matching</strong>
+      </div>
+    </div>
+
     <button id="confirm-ride-btn" class="btn-primary btn-confirm-ride">
-      Confirm Pickup
+      <span>Confirm pickup</span>
+      <i data-lucide="navigation"></i>
     </button>
   </div>
 </section>
 
-
-
-
-<section id="screen-driver-home" class="screen hidden">
+<section id="screen-driver-home" class="screen screen-driver-home hidden">
   <div class="driver-dashboard">
     <div class="dash-header">
-      <h1>Driver Dashboard</h1>
-      <button id="btn-logout-driver" class="logout-btn" title="Logout">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-          <polyline points="16 17 21 12 16 7"/>
-          <line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>
+      <div>
+        <p class="eyebrow">Driver workspace</p>
+        <h1>Ready to drive</h1>
+      </div>
+      <button id="btn-logout-driver" class="logout-btn logout-btn-light" title="Logout" aria-label="Logout" type="button">
+        <i data-lucide="log-out"></i>
       </button>
     </div>
-    <div class="dash-status">
-      <div class="status-card">
-        <span class="status-icon">✅</span>
-        <h3>You're all set!</h3>
-        <p>Your driver account is active. Ride requests coming soon.</p>
+
+    <div class="dashboard-grid">
+      <div class="status-card status-card-main">
+        <div class="status-top">
+          <span class="status-icon" aria-hidden="true"><i data-lucide="shield-check"></i></span>
+          <span id="driver-location-status" class="status-pill">Online</span>
+        </div>
+        <h2>Ready for requests</h2>
+        <p>Your driver account is active and available for nearby riders.</p>
+      </div>
+
+      <div id="driver-request-card" class="driver-request-card">
+        <div class="driver-request-header">
+          <span class="driver-request-icon" aria-hidden="true"><i data-lucide="bell-ring"></i></span>
+          <span class="driver-request-pill">Dispatch</span>
+        </div>
+        <h2 id="driver-request-title">Waiting for requests</h2>
+        <p id="driver-request-body">You are available for nearby rider requests.</p>
+        <div class="driver-request-details">
+          <div>
+            <span>Pickup</span>
+            <strong id="driver-request-pickup">--</strong>
+          </div>
+          <div>
+            <span>Destination</span>
+            <strong id="driver-request-destination">--</strong>
+          </div>
+          <div>
+            <span>Distance</span>
+            <strong id="driver-request-distance">--</strong>
+          </div>
+          <div>
+            <span>Rider live</span>
+            <strong id="driver-request-rider-location">--</strong>
+          </div>
+        </div>
+        <div id="driver-request-actions" class="driver-request-actions is-hidden">
+          <button id="btn-reject-ride" class="btn-secondary" type="button">
+            <i data-lucide="x"></i>
+            <span>Reject</span>
+          </button>
+          <button id="btn-accept-ride" class="btn-primary btn-driver" type="button">
+            <span>Accept</span>
+            <i data-lucide="check"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <span>Today</span>
+        <strong>$0.00</strong>
+        <small>No completed rides yet</small>
+      </div>
+      <div class="metric-card metric-card-accent">
+        <span>Acceptance</span>
+        <strong>100%</strong>
+        <small>Account in good standing</small>
+      </div>
+
+      <div class="driver-map-card">
+        <div class="driver-route">
+          <span class="map-road road-a"></span>
+          <span class="map-road road-b"></span>
+          <span class="map-road road-c"></span>
+          <span class="map-pin pin-a"></span>
+          <span class="map-pin pin-b"></span>
+        </div>
+        <div>
+          <p class="section-label">Dispatch area</p>
+          <h3>Central city</h3>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+<script>
+  window.addEventListener("DOMContentLoaded", function () {
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  });
+</script>
 <script type="module" src="./dist/main.js"></script>
 </body>
 </html>
