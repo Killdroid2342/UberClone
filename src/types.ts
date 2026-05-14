@@ -1,23 +1,23 @@
 
-export interface LatLng {
+export type LatLng = {
   lat: number;
   lng: number;
-}
+};
 
-export interface LocationResult {
+export type LocationResult = {
   name: string;
   lat: number;
   lng: number;
-}
+};
 
-export interface RiderSignupData {
+export type RiderSignupData = {
   email: string;
   password: string;
   name: string;
   phone: string;
-}
+};
 
-export interface DriverSignupData {
+export type DriverSignupData = {
   email: string;
   password: string;
   name: string;
@@ -28,14 +28,14 @@ export interface DriverSignupData {
   vehicle_color: string;
   vehicle_plate: string;
   license_number: string;
-}
+};
 
-export interface LoginData {
+export type LoginData = {
   email: string;
   password: string;
-}
+};
 
-export interface UserProfile {
+export type UserProfile = {
   id: string;
   email: string;
   name: string;
@@ -50,9 +50,31 @@ export interface UserProfile {
   };
   license_number?: string;
   onboarding_status?: string;
-}
+  availability?: "offline" | "available" | "pending" | "busy";
+  location?: LatLng | null;
+  current_ride_id?: string | null;
+  stats?: {
+    accepted: number;
+    rejected: number;
+  };
+};
 
-export interface LoginResponse {
+export type LoginResponse = {
   token: string;
   user: UserProfile;
-}
+};
+
+export type RouteEstimate = {
+  distance_km: number;
+  duration_min: number;
+  fare: number;
+  route: LatLng[];
+  source: string;
+};
+
+export type RideStatus =
+  | "matching"
+  | "pending_driver"
+  | "accepted"
+  | "no_drivers_available";
+
