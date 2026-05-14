@@ -78,3 +78,28 @@ export type RideStatus =
   | "accepted"
   | "no_drivers_available";
 
+export type DriverSummary = {
+  id: string;
+  name: string;
+  phone: string;
+  vehicle?: UserProfile["vehicle"];
+  location?: LatLng | null;
+};
+
+export type Ride = {
+  id: string;
+  rider_id: string;
+  pickup: LatLng;
+  destination: LatLng;
+  status: RideStatus;
+  driver_id: string | null;
+  driver?: DriverSummary | null;
+  driver_distance_km: number | null;
+  driver_location: LatLng | null;
+  rider_location: LatLng | null;
+  created_at: string;
+  updated_at: string;
+  matched_at?: string;
+  accepted_at?: string;
+};
+
