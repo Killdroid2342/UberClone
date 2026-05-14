@@ -146,6 +146,31 @@ export async function requestRide(
   return res.json();
 }
 
+export async function updateDriverLocation(location: LatLng): Promise<UserProfile> {
+  const res = await fetch(`${API_URL}/drivers/location`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ location }),
+  });
+
+  if (!res.ok) throw new Error("Failed to update driver location");
+  return res.json();
+}
+
+export async function updateRiderLocation(
+  rideId: string,
+  location: LatLng
+): Promise<Ride> {
+  const res = await fetch(`${API_URL}/rides/${rideId}/rider-location`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ location }),
+  });
+
+  if (!res.ok) throw new Error("Failed to update rider location");
+  return res.json();
+}
+
 
 
 export function connectRideSocket(
