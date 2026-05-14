@@ -1,12 +1,13 @@
-import { searchLocations } from "./api.js";
-import { setPickupMarker, setDestinationMarker } from "./map.js";
+import { getRouteEstimate, searchLocations } from "./api.js";
+import { clearRoute, setPickupMarker, setDestinationMarker, setRoute } from "./map.js";
 import { SEARCH_DEBOUNCE_MS } from "./config.js";
-import type { LocationResult } from "./types.js";
+import type { LocationResult, RouteEstimate } from "./types.js";
 
 let pickupTimer: number | null = null;
 let destTimer: number | null = null;
 let selectedPickup: LocationResult | null = null;
 let selectedDest: LocationResult | null = null;
+let estimateRequestId = 0;
 
 export function getSelectedPickup(): LocationResult | null { return selectedPickup; }
 export function getSelectedDest(): LocationResult | null { return selectedDest; }
@@ -22,6 +23,8 @@ export function initLocationSearch(): void {
   pickupInput.addEventListener("input", () => {
     if (pickupTimer) clearTimeout(pickupTimer);
     const q = pickupInput.value.trim();
+    selectedPickup = null;
+    updateTripEstimate();
     if (q.length < 2) { pickupResults.innerHTML = ""; pickupResults.classList.remove("visible"); return; }
     pickupTimer = window.setTimeout(async () => {
       const results = await searchLocations(q);
@@ -31,7 +34,7 @@ export function initLocationSearch(): void {
         pickupResults.innerHTML = "";
         pickupResults.classList.remove("visible");
         setPickupMarker(r.lat, r.lng);
-        updateConfirmButton();
+        updateTripEstimate();
       });
     }, SEARCH_DEBOUNCE_MS);
   });
@@ -39,6 +42,8 @@ export function initLocationSearch(): void {
   destInput.addEventListener("input", () => {
     if (destTimer) clearTimeout(destTimer);
     const q = destInput.value.trim();
+    selectedDest = null;
+    updateTripEstimate();
     if (q.length < 2) { destResults.innerHTML = ""; destResults.classList.remove("visible"); return; }
     destTimer = window.setTimeout(async () => {
       const results = await searchLocations(q);
@@ -48,7 +53,7 @@ export function initLocationSearch(): void {
         destResults.innerHTML = "";
         destResults.classList.remove("visible");
         setDestinationMarker(r.lat, r.lng);
-        updateConfirmButton();
+        updateTripEstimate();
       });
     }, SEARCH_DEBOUNCE_MS);
   });
@@ -66,7 +71,10 @@ export function initLocationSearch(): void {
 function renderResults(container: HTMLDivElement, results: LocationResult[], onSelect: (r: LocationResult) => void): void {
   container.innerHTML = "";
   if (results.length === 0) {
-    container.innerHTML = `<div class="search-result-item no-results">No results found</div>`;
+    const empty = document.createElement("div");
+    empty.className = "search-result-item no-results";
+    empty.textContent = "No results found";
+    container.appendChild(empty);
     container.classList.add("visible");
     return;
   }
@@ -76,7 +84,21 @@ function renderResults(container: HTMLDivElement, results: LocationResult[], onS
     const parts = r.name.split(",");
     const main = parts[0];
     const sub = parts.slice(1, 3).join(",").trim();
-    item.innerHTML = `<span class="result-icon">📍</span><div><div class="result-main">${main}</div><div class="result-sub">${sub}</div></div>`;
+
+    const icon = document.createElement("span");
+    icon.className = "result-pin";
+
+    const text = document.createElement("div");
+    const mainEl = document.createElement("div");
+    mainEl.className = "result-main";
+    mainEl.textContent = main;
+
+    const subEl = document.createElement("div");
+    subEl.className = "result-sub";
+    subEl.textContent = sub;
+
+    text.append(mainEl, subEl);
+    item.append(icon, text);
     item.addEventListener("click", () => onSelect(r));
     container.appendChild(item);
   }
@@ -88,5 +110,10 @@ function updateConfirmButton(): void {
   if (!btn) return;
   if (selectedPickup && selectedDest) {
     btn.classList.add("visible");
+    btn.disabled = false;
+  } else {
+    btn.classList.remove("visible");
+    btn.disabled = true;
   }
 }
+
