@@ -22,3 +22,38 @@ const panels: Record<DirectionPanel, {
   },
 };
 
+
+
+export function clearDirections(panel: DirectionPanel): void {
+  const config = panels[panel];
+  const panelEl = document.getElementById(config.panelId);
+  const listEl = document.getElementById(config.listId);
+  const metaEl = document.getElementById(config.metaId);
+
+  if (listEl) listEl.innerHTML = "";
+  if (metaEl) metaEl.textContent = "";
+  if (panelEl) panelEl.classList.add("is-hidden");
+}
+
+export function formatRouteMeta(distanceKm: number, durationMin: number): string {
+  return `${formatDuration(durationMin)} - ${formatDistance(distanceKm)}`;
+}
+
+function formatStepDistance(distanceKm: number): string {
+  if (distanceKm < 0.01) return "Now";
+  if (distanceKm < 0.16) return `${Math.max(30, Math.round(distanceKm * 1000 / 10) * 10)} m`;
+  return formatDistance(distanceKm);
+}
+
+function formatDuration(minutes: number): string {
+  const rounded = Math.max(1, Math.round(minutes));
+  if (rounded < 60) return `${rounded} min`;
+  const hours = Math.floor(rounded / 60);
+  const mins = rounded % 60;
+  return mins ? `${hours} hr ${mins} min` : `${hours} hr`;
+}
+
+function formatDistance(distanceKm: number): string {
+  const miles = distanceKm * 0.621371;
+  return `${miles < 10 ? miles.toFixed(1) : Math.round(miles)} mi`;
+}
