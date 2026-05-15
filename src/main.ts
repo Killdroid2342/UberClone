@@ -1000,6 +1000,47 @@ function bindDriverProgressAction(
   });
 }
 
+function bindDriverAvailabilityToggle(): void {
+  const button = document.getElementById("btn-driver-availability") as HTMLButtonElement;
+  if (!button) return;
+
+  button.addEventListener("click", async () => {
+    if (!currentUser || currentUser.role !== "driver" || driverAvailabilityLoading) return;
+
+    const nextOnline = !isDriverOnline;
+    const previousAvailability = currentUser.availability;
+    const previousOnline = isDriverOnline;
+    driverAvailabilityLoading = true;
+    renderDriverAvailability(nextOnline ? "available" : "offline");
+
+    try {
+      const user = await updateDriverAvailability(nextOnline);
+      currentUser = user;
+      isDriverOnline = user.availability !== "offline";
+      renderDriverAvailability(user.availability);
+
+      if (isDriverOnline) {
+        startDriverLocationTracking();
+        showToast("You are online", "success");
+      } else {
+        stopDriverLocationTracking();
+        renderDriverRequest(null);
+        clearDirections("driver");
+        showToast("You are offline", "info");
+      }
+    } catch (err: any) {
+      showToast(err.message || "Could not update availability", "error");
+      isDriverOnline = previousOnline;
+      if (currentUser?.role === "driver") currentUser = { ...currentUser, availability: previousAvailability };
+      renderDriverAvailability(previousAvailability);
+    } finally {
+      driverAvailabilityLoading = false;
+      renderDriverAvailability(currentUser?.availability);
+    }
+  });
+}
+
+
 
 function formatDistanceKm(distanceKm: number): string {
   const miles = distanceKm * 0.621371;
