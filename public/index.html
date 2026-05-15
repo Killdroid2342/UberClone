@@ -403,6 +403,14 @@
       </div>
     </div>
 
+    <div id="rider-directions" class="directions-panel is-hidden" aria-live="polite">
+      <div class="directions-header">
+        <span id="rider-directions-label">Turn-by-turn</span>
+        <strong id="rider-directions-meta">--</strong>
+      </div>
+      <ol id="rider-directions-list" class="directions-list"></ol>
+    </div>
+
     <div id="ride-status-card" class="ride-status is-hidden" aria-live="polite">
       <div class="ride-status-icon" aria-hidden="true"><i data-lucide="radio-tower"></i></div>
       <div>
@@ -411,6 +419,11 @@
         <strong id="ride-status-meta">Matching</strong>
       </div>
     </div>
+
+    <button id="cancel-ride-btn" class="btn-secondary btn-cancel-ride is-hidden" type="button">
+      <i data-lucide="x-circle"></i>
+      <span>Cancel ride</span>
+    </button>
 
     <button id="confirm-ride-btn" class="btn-primary btn-confirm-ride">
       <span>Confirm pickup</span>
@@ -437,8 +450,12 @@
           <span class="status-icon" aria-hidden="true"><i data-lucide="shield-check"></i></span>
           <span id="driver-location-status" class="status-pill">Online</span>
         </div>
-        <h2>Ready for requests</h2>
-        <p>Your driver account is active and available for nearby riders.</p>
+        <h2 id="driver-status-heading">Ready for requests</h2>
+        <p id="driver-status-copy">Your driver account is active and available for nearby riders.</p>
+        <button id="btn-driver-availability" class="availability-toggle" type="button" aria-pressed="true">
+          <span class="availability-dot"></span>
+          <span id="driver-availability-label">Go offline</span>
+        </button>
       </div>
 
       <div id="driver-request-card" class="driver-request-card">
@@ -466,6 +483,13 @@
             <strong id="driver-request-rider-location">--</strong>
           </div>
         </div>
+        <div id="driver-directions" class="directions-panel driver-directions is-hidden" aria-live="polite">
+          <div class="directions-header">
+            <span id="driver-directions-label">To pickup</span>
+            <strong id="driver-directions-meta">--</strong>
+          </div>
+          <ol id="driver-directions-list" class="directions-list"></ol>
+        </div>
         <div id="driver-request-actions" class="driver-request-actions is-hidden">
           <button id="btn-reject-ride" class="btn-secondary" type="button">
             <i data-lucide="x"></i>
@@ -474,6 +498,22 @@
           <button id="btn-accept-ride" class="btn-primary btn-driver" type="button">
             <span>Accept</span>
             <i data-lucide="check"></i>
+          </button>
+          <button id="btn-arrived-ride" class="btn-primary btn-driver driver-progress-action is-hidden" type="button">
+            <span>Arrived</span>
+            <i data-lucide="map-pin-check"></i>
+          </button>
+          <button id="btn-start-ride" class="btn-primary btn-driver driver-progress-action is-hidden" type="button">
+            <span>Start trip</span>
+            <i data-lucide="route"></i>
+          </button>
+          <button id="btn-complete-ride" class="btn-primary btn-driver driver-progress-action is-hidden" type="button">
+            <span>Complete</span>
+            <i data-lucide="flag"></i>
+          </button>
+          <button id="btn-cancel-driver-ride" class="btn-secondary btn-danger driver-progress-action is-hidden" type="button">
+            <i data-lucide="x-circle"></i>
+            <span>Cancel</span>
           </button>
         </div>
       </div>
