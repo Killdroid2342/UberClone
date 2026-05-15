@@ -22,7 +22,45 @@ const panels: Record<DirectionPanel, {
   },
 };
 
+export function renderDirections(
+  panel: DirectionPanel,
+  steps: RouteStep[] | null | undefined,
+  label = "Directions",
+  meta = ""
+): void {
+  const config = panels[panel];
+  const panelEl = document.getElementById(config.panelId);
+  const labelEl = document.getElementById(config.labelId);
+  const metaEl = document.getElementById(config.metaId);
+  const listEl = document.getElementById(config.listId);
 
+  if (!panelEl || !labelEl || !metaEl || !listEl) return;
+
+  const usableSteps = (steps || []).filter((step) => step.instruction);
+  if (usableSteps.length === 0) {
+    clearDirections(panel);
+    return;
+  }
+
+  labelEl.textContent = label;
+  metaEl.textContent = meta;
+  listEl.innerHTML = "";
+
+  for (const step of usableSteps) {
+    const item = document.createElement("li");
+
+    const text = document.createElement("span");
+    text.textContent = step.instruction;
+
+    const distance = document.createElement("strong");
+    distance.textContent = formatStepDistance(step.distance_km);
+
+    item.append(text, distance);
+    listEl.appendChild(item);
+  }
+
+  panelEl.classList.remove("is-hidden");
+}
 
 export function clearDirections(panel: DirectionPanel): void {
   const config = panels[panel];
