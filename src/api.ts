@@ -10,6 +10,7 @@ import type {
   LatLng,
   RouteEstimate,
   Ride,
+  RideStatus,
   RideSocketMessage,
   DriverSocketMessage,
 } from "./types.js";
@@ -157,6 +158,21 @@ export async function updateDriverLocation(location: LatLng): Promise<UserProfil
   return res.json();
 }
 
+export async function updateDriverAvailability(online: boolean): Promise<UserProfile> {
+  const res = await fetch(`${API_URL}/drivers/availability`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ online }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to update driver availability");
+  }
+
+  return res.json();
+}
+
 export async function updateRiderLocation(
   rideId: string,
   location: LatLng
@@ -203,6 +219,38 @@ export async function rejectRide(rideId: string): Promise<Ride> {
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.detail || "Failed to reject ride");
+  }
+
+  return res.json();
+}
+
+export async function updateRideStatus(
+  rideId: string,
+  status: RideStatus
+): Promise<Ride> {
+  const res = await fetch(`${API_URL}/rides/${rideId}/status`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ status }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to update ride status");
+  }
+
+  return res.json();
+}
+
+export async function cancelRide(rideId: string): Promise<Ride> {
+  const res = await fetch(`${API_URL}/rides/${rideId}/cancel`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to cancel ride");
   }
 
   return res.json();
