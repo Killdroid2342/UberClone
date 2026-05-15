@@ -1,4 +1,5 @@
 import { getRouteEstimate, searchLocations } from "./api.js";
+import { clearDirections, formatRouteMeta, renderDirections } from "./directions.js";
 import { clearRoute, setPickupMarker, setDestinationMarker, setRoute } from "./map.js";
 import { SEARCH_DEBOUNCE_MS } from "./config.js";
 import type { LocationResult, RouteEstimate } from "./types.js";
@@ -145,12 +146,14 @@ async function updateTripEstimate(): Promise<void> {
 }
 
 function setEstimateIdle(): void {
+  clearDirections("rider");
   setText("ride-eta", "Choose route");
   setText("ride-distance", "--");
   setText("ride-fare", "--");
 }
 
 function setEstimateLoading(): void {
+  clearDirections("rider");
   setText("ride-eta", "Estimating...");
   setText("ride-distance", "--");
   setText("ride-fare", "--");
@@ -158,6 +161,7 @@ function setEstimateLoading(): void {
 
 function setEstimateError(): void {
   clearRoute();
+  clearDirections("rider");
   setText("ride-eta", "Unavailable");
   setText("ride-distance", "--");
   setText("ride-fare", "--");
@@ -167,6 +171,12 @@ function setEstimateValues(estimate: RouteEstimate): void {
   setText("ride-eta", formatDuration(estimate.duration_min));
   setText("ride-distance", formatDistance(estimate.distance_km));
   setText("ride-fare", formatFare(estimate.fare));
+  renderDirections(
+    "rider",
+    estimate.steps,
+    "Turn-by-turn",
+    formatRouteMeta(estimate.distance_km, estimate.duration_min)
+  );
 }
 
 function setText(id: string, value: string): void {
