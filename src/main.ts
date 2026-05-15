@@ -537,6 +537,42 @@ function renderRideLocations(ride: Ride): void {
   }
 }
 
+function createLiveRouteState(): LiveRouteState {
+  return {
+    rideId: null,
+    leg: null,
+    origin: null,
+    requestedAt: 0,
+    requestId: 0,
+  };
+}
+
+async function refreshRiderRoute(ride: Ride, force = false): Promise<void> {
+  const target = riderRouteTarget(ride);
+
+  if (!target) {
+    if (isTerminalRideStatus(ride.status)) {
+      clearDirections("rider");
+      clearRoute();
+      riderRouteState = createLiveRouteState();
+    }
+    return;
+  }
+
+  await refreshLiveRoute("rider", riderRouteState, ride.id, target, force, true);
+}
+
+async function refreshDriverRoute(ride: Ride, force = false): Promise<void> {
+  const target = driverRouteTarget(ride);
+
+  if (!target) {
+    clearDirections("driver");
+    driverRouteState = createLiveRouteState();
+    return;
+  }
+
+  await refreshLiveRoute("driver", driverRouteState, ride.id, target, force, false);
+}
 
 
 
@@ -824,6 +860,46 @@ function bindRiderCancellation(): void {
   });
 }
 
+function bindDriverCancelAction(button: HTMLButtonElement | null): void {
+  if (!button) return;
+
+  button.addEventListener("click", async () => {
+    if (!activeDriverRide) return;
+    setLoading(button, true);
+    try {
+      const ride = await cancelRide(activeDriverRide.id);
+      renderDriverRequest(ride);
+      clearDirections("driver");
+      showToast("Ride cancelled", "info");
+    } catch (err: any) {
+      showToast(err.message || "Could not cancel ride", "error");
+    } finally {
+      setLoading(button, false);
+    }
+  });
+}
+
+function bindDriverProgressAction(
+  button: HTMLButtonElement | null,
+  status: RideStatus,
+  successMessage: string
+): void {
+  if (!button) return;
+  button.addEventListener("click", async () => {
+    if (!activeDriverRide) return;
+    setLoading(button, true);
+    try {
+      const ride = await updateRideStatus(activeDriverRide.id, status);
+      renderDriverRequest(ride);
+      void refreshDriverRoute(ride, true);
+      showToast(successMessage, "success");
+    } catch (err: any) {
+      showToast(err.message || "Could not update ride", "error");
+    } finally {
+      setLoading(button, false);
+    }
+  });
+}
 
 
 function formatDistanceKm(distanceKm: number): string {
