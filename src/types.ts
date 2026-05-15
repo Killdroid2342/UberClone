@@ -69,14 +69,33 @@ export type RouteEstimate = {
   duration_min: number;
   fare: number;
   route: LatLng[];
+  steps: RouteStep[];
   source: string;
+};
+
+export type RouteStep = {
+  instruction: string;
+  distance_km: number;
+  duration_min: number;
+  location: LatLng | null;
 };
 
 export type RideStatus =
   | "matching"
   | "pending_driver"
   | "accepted"
+  | "arrived"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
   | "no_drivers_available";
+
+export type RideStatusHistoryItem = {
+  from: RideStatus | null;
+  status: RideStatus;
+  actor: "system" | "rider" | "driver" | string;
+  at: string;
+};
 
 export type DriverSummary = {
   id: string;
@@ -99,8 +118,14 @@ export type Ride = {
   rider_location: LatLng | null;
   created_at: string;
   updated_at: string;
+  status_history?: RideStatusHistoryItem[];
   matched_at?: string;
   accepted_at?: string;
+  arrived_at?: string;
+  started_at?: string;
+  completed_at?: string;
+  cancelled_at?: string;
+  no_drivers_available_at?: string;
 };
 
 export type RideSocketMessage =
@@ -113,5 +138,6 @@ export type DriverSocketMessage =
   | { type: "ride_request"; ride: Ride }
   | { type: "ride_update"; ride: Ride }
   | { type: "ride_cleared"; ride_id: string }
+  | { type: "availability_update"; availability: UserProfile["availability"]; online: boolean }
   | { type: "driver_location_update"; location: LatLng; ride?: Ride }
   | { type: "pong"; sent_at?: string };
