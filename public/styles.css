@@ -1180,6 +1180,84 @@ svg {
   color: var(--green-dark);
 }
 
+.directions-panel {
+  margin-top: 14px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(248, 250, 246, 0.92);
+}
+
+.directions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.directions-header span {
+  color: var(--green-dark);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.directions-header strong {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.directions-list {
+  max-height: 174px;
+  overflow-y: auto;
+  display: grid;
+  gap: 7px;
+  list-style: none;
+  counter-reset: directions;
+}
+
+.directions-list li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.directions-list li::before {
+  counter-increment: directions;
+  content: counter(directions);
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.directions-list li span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.directions-list li strong {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .ride-status {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
@@ -1235,6 +1313,27 @@ svg {
 
 .btn-confirm-ride.visible {
   display: inline-flex;
+}
+
+.btn-cancel-ride {
+  width: 100%;
+  margin-top: 12px;
+  color: var(--red);
+  border-color: rgba(217, 72, 72, 0.26);
+  background: rgba(217, 72, 72, 0.08);
+}
+
+.btn-danger {
+  color: var(--red);
+  border-color: rgba(217, 72, 72, 0.28);
+  background: rgba(217, 72, 72, 0.08);
+}
+
+.btn-danger:hover,
+.btn-cancel-ride:hover {
+  color: white;
+  border-color: var(--red);
+  background: var(--red);
 }
 
 .driver-dashboard {
@@ -1303,6 +1402,21 @@ svg {
   letter-spacing: 0.06em;
 }
 
+.status-pill.is-offline {
+  color: white;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.status-pill.is-busy {
+  color: white;
+  background: var(--blue);
+}
+
+.status-pill.is-pending {
+  color: var(--ink);
+  background: white;
+}
+
 .status-card h2 {
   max-width: 320px;
   color: white;
@@ -1316,6 +1430,47 @@ svg {
   color: rgba(255, 255, 255, 0.72);
   font-size: 0.98rem;
   line-height: 1.65;
+}
+
+.availability-toggle {
+  width: max-content;
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 15px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 900;
+  transition: background var(--ease), border-color var(--ease), transform var(--ease);
+}
+
+.availability-toggle:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.availability-toggle:disabled {
+  opacity: 0.7;
+  cursor: wait;
+  transform: none;
+}
+
+.availability-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 5px rgba(31, 157, 97, 0.18);
+}
+
+.availability-toggle.is-offline .availability-dot {
+  background: var(--faint);
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.1);
 }
 
 .driver-request-card {
@@ -1413,6 +1568,14 @@ svg {
   grid-template-columns: 0.8fr 1fr;
   gap: 10px;
   margin-top: 14px;
+}
+
+.driver-directions {
+  background: white;
+}
+
+.driver-request-actions.single-action {
+  grid-template-columns: 1fr;
 }
 
 .driver-request-actions .btn-primary,
