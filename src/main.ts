@@ -12,20 +12,27 @@ import {
   connectRideSocket,
   connectDriverSocket,
   updateDriverLocation,
+  updateDriverAvailability,
   updateRiderLocation,
+  getRouteEstimate,
   getDriverRideRequest,
   acceptRide,
   rejectRide,
+  updateRideStatus,
+  cancelRide,
 } from "./api.js";
-import { clearRealtimeMarkers, initMap, setDriverMarker, setRiderMarker } from "./map.js";
+import { clearRealtimeMarkers, clearRoute, initMap, setDriverMarker, setRiderMarker, setRoute } from "./map.js";
+import { clearDirections, formatRouteMeta, renderDirections } from "./directions.js";
 import { initLocationSearch, getSelectedPickup, getSelectedDest } from "./location.js";
 import {
   DEFAULT_CENTER,
   LOCATION_PUBLISH_DISTANCE_METERS,
   LOCATION_PUBLISH_INTERVAL_MS,
+  REROUTE_DISTANCE_METERS,
+  REROUTE_INTERVAL_MS,
 } from "./config.js";
 import type { RealtimeSocket } from "./socket.js";
-import type { LatLng, Ride, UserProfile } from "./types.js";
+import type { LatLng, Ride, RideStatus, RouteEstimate, UserProfile } from "./types.js";
 
 let currentUser: UserProfile | null = null;
 let currentRiderRideSocket: RealtimeSocket | null = null;
@@ -38,6 +45,25 @@ let lastDriverLocationSentAt = 0;
 let lastRiderLocationSentAt = 0;
 let lastDriverLocation: LatLng | null = null;
 let lastRiderLocation: LatLng | null = null;
+let isDriverOnline = false;
+let driverAvailabilityLoading = false;
+let riderRouteState = createLiveRouteState();
+let driverRouteState = createLiveRouteState();
+
+type LiveRouteState = {
+  rideId: string | null;
+  leg: string | null;
+  origin: LatLng | null;
+  requestedAt: number;
+  requestId: number;
+};
+
+type LiveRouteTarget = {
+  leg: string;
+  label: string;
+  origin: LatLng;
+  destination: LatLng;
+};
 
 document.addEventListener("DOMContentLoaded", async () => {
   bindAll();
@@ -79,7 +105,9 @@ function bindAll(): void {
   bindDriverLogin();
   bindDriverSignup();
   bindConfirmRide();
+  bindRiderCancellation();
   bindDriverRideActions();
+  bindDriverAvailabilityToggle();
 }
 
 function showRiderHome(): void {
@@ -95,13 +123,22 @@ function showRiderHome(): void {
 
 function showDriverHome(user: UserProfile): void {
   showScreen("screen-driver-home");
+  isDriverOnline = user.availability !== "offline";
+  renderDriverAvailability(user.availability);
   renderDriverRequest(null);
   connectDriverUpdates(user.id);
-  startDriverLocationTracking();
+  if (isDriverOnline) {
+    startDriverLocationTracking();
+  } else {
+    stopDriverLocationTracking();
+  }
   void refreshDriverRideRequest();
 }
 
 function logout(): void {
+  if (currentUser?.role === "driver" && isDriverOnline) {
+    void updateDriverAvailability(false).catch(() => {});
+  }
   currentRiderRideSocket?.close();
   currentDriverSocket?.close();
   stopDriverLocationTracking();
@@ -110,6 +147,10 @@ function logout(): void {
   currentDriverSocket = null;
   activeDriverRide = null;
   activeRiderRideId = null;
+  isDriverOnline = false;
+  clearDirections("rider");
+  clearDirections("driver");
+  clearRoute();
   currentUser = null;
   clearToken();
   showScreen("screen-welcome");
@@ -264,12 +305,24 @@ function connectRiderRideUpdates(ride: Ride): void {
     if (data.type === "ride_update") {
       renderRideLocations(data.ride);
       renderRiderRideStatus(data.ride);
+      void refreshRiderRoute(data.ride);
       if (data.ride.status === "no_drivers_available") {
+        stopRiderLocationTracking(false);
+      }
+      if (isTerminalRideStatus(data.ride.status)) {
         stopRiderLocationTracking();
+      }
+      if (isTerminalRideStatus(data.ride.status)) {
+        currentRiderRideSocket?.close();
+        currentRiderRideSocket = null;
+        clearRealtimeMarkers();
+        clearDirections("rider");
+        clearRoute();
       }
     }
   });
   startRiderLocationTracking(ride.id);
+  void refreshRiderRoute(ride, true);
 }
 
 function connectDriverUpdates(driverId: string): void {
@@ -277,21 +330,40 @@ function connectDriverUpdates(driverId: string): void {
   currentDriverSocket = connectDriverSocket(driverId, (data) => {
     if (data.type === "ride_request" || data.type === "ride_update") {
       renderDriverRequest(data.ride);
+      void refreshDriverRoute(data.ride, data.type === "ride_request");
       if (data.type === "ride_request" && data.ride?.status === "pending_driver") {
         showToast("New ride request", "info");
       }
     }
     if (data.type === "driver_location_update") {
-      setText("driver-location-status", "Online");
+      if (data.ride) {
+        renderDriverRequest(data.ride);
+        void refreshDriverRoute(data.ride);
+      } else {
+        renderDriverAvailability(driverAvailabilityForRide(activeDriverRide));
+      }
+    }
+    if (data.type === "availability_update") {
+      isDriverOnline = data.online;
+      renderDriverAvailability(data.availability);
+      if (data.online) startDriverLocationTracking();
+      else {
+        stopDriverLocationTracking();
+        activeDriverRide = null;
+        clearDirections("driver");
+      }
+      renderDriverRequest(activeDriverRide);
     }
     if (data.type === "ride_cleared") {
       renderDriverRequest(null);
+      clearDirections("driver");
     }
   });
 }
 
 function startDriverLocationTracking(): void {
   if (!currentUser || currentUser.role !== "driver") return;
+  if (!isDriverOnline) return;
   stopDriverLocationTracking();
 
   if (!navigator.geolocation) {
@@ -371,11 +443,15 @@ function stopRiderLocationTracking(clearRide = true): void {
 
 async function publishDriverLocation(location: LatLng, force = false): Promise<void> {
   if (!currentUser || currentUser.role !== "driver") return;
+  if (!isDriverOnline) return;
   if (!force && !shouldPublishLocation(location, lastDriverLocation, lastDriverLocationSentAt)) return;
 
   lastDriverLocation = location;
   lastDriverLocationSentAt = Date.now();
-  setText("driver-location-status", "Online");
+  renderDriverAvailability(driverAvailabilityForRide(activeDriverRide));
+  if (activeDriverRide) {
+    void refreshDriverRoute(activeDriverRide);
+  }
 
   const sentOverSocket = currentDriverSocket?.sendJson({
     type: "driver_location_update",
@@ -388,7 +464,8 @@ async function publishDriverLocation(location: LatLng, force = false): Promise<v
     await updateDriverLocation(location);
   } catch (err: any) {
     showToast(err.message || "Could not go online", "error");
-    setText("driver-location-status", "Offline");
+    isDriverOnline = false;
+    renderDriverAvailability("offline");
   }
 }
 
@@ -418,13 +495,29 @@ async function refreshDriverRideRequest(): Promise<void> {
   try {
     const ride = await getDriverRideRequest();
     renderDriverRequest(ride);
+    if (ride) void refreshDriverRoute(ride, true);
   } catch {
     renderDriverRequest(null);
+    clearDirections("driver");
   }
 }
 
 function defaultLocation(): LatLng {
   return { lat: DEFAULT_CENTER[0], lng: DEFAULT_CENTER[1] };
+}
+
+function isTerminalRideStatus(status: RideStatus): boolean {
+  return status === "completed" || status === "cancelled";
+}
+
+function isRiderCancelableStatus(status: RideStatus): boolean {
+  return (
+    status === "matching" ||
+    status === "pending_driver" ||
+    status === "accepted" ||
+    status === "arrived" ||
+    status === "no_drivers_available"
+  );
 }
 
 function shouldPublishLocation(location: LatLng, previous: LatLng | null, sentAt: number): boolean {
@@ -443,6 +536,9 @@ function renderRideLocations(ride: Ride): void {
     setDriverMarker(ride.driver_location);
   }
 }
+
+
+
 
 function distanceMeters(a: LatLng, b: LatLng): number {
   return distanceKm(a, b) * 1000;
@@ -470,19 +566,23 @@ function renderRiderRideStatus(ride: Ride | null): void {
   const body = document.getElementById("ride-status-body");
   const meta = document.getElementById("ride-status-meta");
   const btn = document.getElementById("confirm-ride-btn") as HTMLButtonElement;
+  const cancelBtn = document.getElementById("cancel-ride-btn") as HTMLButtonElement;
 
-  if (!card || !title || !body || !meta || !btn) return;
+  if (!card || !title || !body || !meta || !btn || !cancelBtn) return;
 
   if (!ride) {
     card.classList.add("is-hidden");
+    cancelBtn.classList.add("is-hidden");
     btn.disabled = false;
     btn.innerHTML = `<span>Confirm pickup</span><i data-lucide="navigation"></i>`;
     clearRealtimeMarkers();
+    clearDirections("rider");
     refreshDynamicIcons();
     return;
   }
 
   card.classList.remove("is-hidden");
+  cancelBtn.classList.toggle("is-hidden", !isRiderCancelableStatus(ride.status));
 
   if (ride.status === "pending_driver") {
     title.textContent = "Driver matched";
@@ -507,6 +607,34 @@ function renderRiderRideStatus(ride: Ride | null): void {
         : "Meet at the pickup point";
     btn.disabled = true;
     btn.innerHTML = `<span>Driver on the way</span><i data-lucide="car-front"></i>`;
+  } else if (ride.status === "arrived") {
+    title.textContent = "Driver arrived";
+    body.textContent = ride.driver
+      ? `${ride.driver.name} is at the pickup point.`
+      : "Your driver is at the pickup point.";
+    meta.textContent = ride.driver?.vehicle?.plate
+      ? `Plate ${ride.driver.vehicle.plate}`
+      : "Meet your driver";
+    btn.disabled = true;
+    btn.innerHTML = `<span>Driver arrived</span><i data-lucide="map-pin-check"></i>`;
+  } else if (ride.status === "in_progress") {
+    title.textContent = "Trip in progress";
+    body.textContent = "You are on your way to the destination.";
+    meta.textContent = "Enjoy the ride";
+    btn.disabled = true;
+    btn.innerHTML = `<span>On trip</span><i data-lucide="route"></i>`;
+  } else if (ride.status === "completed") {
+    title.textContent = "Trip complete";
+    body.textContent = "You have arrived at the destination.";
+    meta.textContent = "Ready when you are";
+    btn.disabled = false;
+    btn.innerHTML = `<span>Book another ride</span><i data-lucide="navigation"></i>`;
+  } else if (ride.status === "cancelled") {
+    title.textContent = "Ride cancelled";
+    body.textContent = "This ride is no longer active.";
+    meta.textContent = "Choose a route to try again";
+    btn.disabled = false;
+    btn.innerHTML = `<span>Try again</span><i data-lucide="refresh-cw"></i>`;
   } else if (ride.status === "no_drivers_available") {
     title.textContent = "No drivers available";
     body.textContent = "No online drivers are close enough right now.";
@@ -538,21 +666,41 @@ function renderDriverRequest(ride: Ride | null): void {
   const distance = document.getElementById("driver-request-distance");
   const riderLocation = document.getElementById("driver-request-rider-location");
   const actions = document.getElementById("driver-request-actions");
+  const rejectBtn = document.getElementById("btn-reject-ride") as HTMLButtonElement;
+  const acceptBtn = document.getElementById("btn-accept-ride") as HTMLButtonElement;
+  const arrivedBtn = document.getElementById("btn-arrived-ride") as HTMLButtonElement;
+  const startBtn = document.getElementById("btn-start-ride") as HTMLButtonElement;
+  const completeBtn = document.getElementById("btn-complete-ride") as HTMLButtonElement;
+  const cancelBtn = document.getElementById("btn-cancel-driver-ride") as HTMLButtonElement;
 
   if (!card || !status || !title || !body || !pickup || !destination || !distance || !riderLocation || !actions) return;
+
+  const actionsEl = actions;
+  const actionButtons = [rejectBtn, acceptBtn, arrivedBtn, startBtn, completeBtn, cancelBtn]
+    .filter(Boolean) as HTMLButtonElement[];
+
+  function showOnlyActions(...buttons: HTMLButtonElement[]): void {
+    actionButtons.forEach((button) => button.classList.add("is-hidden"));
+    buttons.forEach((button) => button.classList.remove("is-hidden"));
+    actionsEl.classList.toggle("single-action", buttons.length === 1);
+    actionsEl.classList.toggle("is-hidden", buttons.length === 0);
+  }
 
   activeDriverRide = ride;
   card.classList.toggle("has-request", Boolean(ride));
 
   if (!ride) {
-    status.textContent = "Online";
-    title.textContent = "Waiting for requests";
-    body.textContent = "You are available for nearby rider requests.";
+    renderDriverAvailability(isDriverOnline ? "available" : "offline");
+    title.textContent = isDriverOnline ? "Waiting for requests" : "You're offline";
+    body.textContent = isDriverOnline
+      ? "You are available for nearby rider requests."
+      : "Go online when you are ready to receive trips.";
     pickup.textContent = "--";
     destination.textContent = "--";
     distance.textContent = "--";
     riderLocation.textContent = "--";
-    actions.classList.add("is-hidden");
+    clearDirections("driver");
+    showOnlyActions();
     return;
   }
 
@@ -562,15 +710,42 @@ function renderDriverRequest(ride: Ride | null): void {
   riderLocation.textContent = ride.rider_location ? formatPoint(ride.rider_location) : "--";
 
   if (ride.status === "accepted") {
-    status.textContent = "Accepted";
+    renderDriverAvailability("busy");
     title.textContent = "Ride accepted";
     body.textContent = "Head to the pickup point.";
-    actions.classList.add("is-hidden");
-  } else {
-    status.textContent = "New request";
+    showOnlyActions(cancelBtn, arrivedBtn);
+  } else if (ride.status === "arrived") {
+    renderDriverAvailability("busy", "At pickup");
+    title.textContent = "Rider pickup";
+    body.textContent = "Start the trip when the rider is in the car.";
+    showOnlyActions(cancelBtn, startBtn);
+  } else if (ride.status === "in_progress") {
+    renderDriverAvailability("busy", "On trip");
+    title.textContent = "Trip in progress";
+    body.textContent = "Complete the ride after reaching the destination.";
+    showOnlyActions(completeBtn);
+  } else if (ride.status === "completed") {
+    renderDriverAvailability(isDriverOnline ? "available" : "offline", "Completed");
+    title.textContent = "Ride complete";
+    body.textContent = "The trip has been completed.";
+    clearDirections("driver");
+    showOnlyActions();
+  } else if (ride.status === "cancelled") {
+    renderDriverAvailability(isDriverOnline ? "available" : "offline", "Cancelled");
+    title.textContent = "Ride cancelled";
+    body.textContent = "This ride is no longer active.";
+    clearDirections("driver");
+    showOnlyActions();
+  } else if (ride.status === "pending_driver") {
+    renderDriverAvailability("pending", "New request");
     title.textContent = "Incoming ride";
     body.textContent = "Review the pickup and destination before responding.";
-    actions.classList.remove("is-hidden");
+    showOnlyActions(rejectBtn, acceptBtn);
+  } else {
+    renderDriverAvailability(isDriverOnline ? "available" : "offline", "Matching");
+    title.textContent = "Finding another driver";
+    body.textContent = "The rider request is being rematched.";
+    showOnlyActions();
   }
 
   refreshDynamicIcons();
@@ -579,6 +754,10 @@ function renderDriverRequest(ride: Ride | null): void {
 function bindDriverRideActions(): void {
   const acceptBtn = document.getElementById("btn-accept-ride") as HTMLButtonElement;
   const rejectBtn = document.getElementById("btn-reject-ride") as HTMLButtonElement;
+  const arrivedBtn = document.getElementById("btn-arrived-ride") as HTMLButtonElement;
+  const startBtn = document.getElementById("btn-start-ride") as HTMLButtonElement;
+  const completeBtn = document.getElementById("btn-complete-ride") as HTMLButtonElement;
+  const cancelBtn = document.getElementById("btn-cancel-driver-ride") as HTMLButtonElement;
 
   if (acceptBtn) {
     acceptBtn.addEventListener("click", async () => {
@@ -587,6 +766,7 @@ function bindDriverRideActions(): void {
       try {
         const ride = await acceptRide(activeDriverRide.id);
         renderDriverRequest(ride);
+        void refreshDriverRoute(ride, true);
         showToast("Ride accepted", "success");
       } catch (err: any) {
         showToast(err.message || "Could not accept ride", "error");
@@ -603,6 +783,7 @@ function bindDriverRideActions(): void {
       try {
         await rejectRide(activeDriverRide.id);
         renderDriverRequest(null);
+        clearDirections("driver");
         showToast("Ride rejected", "info");
       } catch (err: any) {
         showToast(err.message || "Could not reject ride", "error");
@@ -611,7 +792,39 @@ function bindDriverRideActions(): void {
       }
     });
   }
+
+  bindDriverProgressAction(arrivedBtn, "arrived", "Marked arrived");
+  bindDriverProgressAction(startBtn, "in_progress", "Trip started");
+  bindDriverProgressAction(completeBtn, "completed", "Ride completed");
+  bindDriverCancelAction(cancelBtn);
 }
+
+function bindRiderCancellation(): void {
+  const button = document.getElementById("cancel-ride-btn") as HTMLButtonElement;
+  if (!button) return;
+
+  button.addEventListener("click", async () => {
+    if (!activeRiderRideId) return;
+    setLoading(button, true);
+    try {
+      const ride = await cancelRide(activeRiderRideId);
+      renderRiderRideStatus(ride);
+      stopRiderLocationTracking();
+      currentRiderRideSocket?.close();
+      currentRiderRideSocket = null;
+      clearRealtimeMarkers();
+      clearDirections("rider");
+      clearRoute();
+      showToast("Ride cancelled", "info");
+    } catch (err: any) {
+      showToast(err.message || "Could not cancel ride", "error");
+    } finally {
+      setLoading(button, false);
+    }
+  });
+}
+
+
 
 function formatDistanceKm(distanceKm: number): string {
   const miles = distanceKm * 0.621371;
