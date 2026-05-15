@@ -574,7 +574,106 @@ async function refreshDriverRoute(ride: Ride, force = false): Promise<void> {
   await refreshLiveRoute("driver", driverRouteState, ride.id, target, force, false);
 }
 
+async function refreshLiveRoute(
+  panel: "rider" | "driver",
+  state: LiveRouteState,
+  rideId: string,
+  target: LiveRouteTarget,
+  force: boolean,
+  drawMapRoute: boolean
+): Promise<void> {
+  const now = Date.now();
+  const sameRoute =
+    state.rideId === rideId &&
+    state.leg === target.leg &&
+    state.origin !== null &&
+    distanceMeters(state.origin, target.origin) < REROUTE_DISTANCE_METERS;
+  const recent = now - state.requestedAt < REROUTE_INTERVAL_MS;
 
+  if (!force && sameRoute && recent) return;
+
+  const requestId = state.requestId + 1;
+  state.rideId = rideId;
+  state.leg = target.leg;
+  state.origin = target.origin;
+  state.requestedAt = now;
+  state.requestId = requestId;
+
+  try {
+    const estimate = await getRouteEstimate(target.origin, target.destination);
+    if (state.requestId !== requestId) return;
+
+    renderDirections(panel, estimate.steps, target.label, estimateMeta(estimate));
+    if (drawMapRoute) {
+      setRoute(estimate.route);
+    }
+  } catch {
+    // Keep the last successful directions visible while the next tick retries.
+  }
+}
+
+function riderRouteTarget(ride: Ride): LiveRouteTarget | null {
+  if (
+    (ride.status === "pending_driver" || ride.status === "accepted" || ride.status === "arrived") &&
+    ride.driver_location
+  ) {
+    return {
+      leg: "driver-to-pickup",
+      label: "Driver to pickup",
+      origin: ride.driver_location,
+      destination: ride.pickup,
+    };
+  }
+
+  if (ride.status === "in_progress") {
+    return {
+      leg: "trip-to-destination",
+      label: "To destination",
+      origin: ride.rider_location || ride.driver_location || ride.pickup,
+      destination: ride.destination,
+    };
+  }
+
+  return null;
+}
+
+function driverRouteTarget(ride: Ride): LiveRouteTarget | null {
+  if (ride.status === "pending_driver" || ride.status === "accepted") {
+    const origin = lastDriverLocation || ride.driver_location;
+    if (!origin) return null;
+    return {
+      leg: "driver-to-pickup",
+      label: "To pickup",
+      origin,
+      destination: ride.pickup,
+    };
+  }
+
+  if (ride.status === "arrived") {
+    return {
+      leg: "pickup-to-destination",
+      label: "Trip route",
+      origin: ride.pickup,
+      destination: ride.destination,
+    };
+  }
+
+  if (ride.status === "in_progress") {
+    const origin = lastDriverLocation || ride.driver_location || ride.rider_location || ride.pickup;
+    return {
+      leg: "trip-to-destination",
+      label: "To destination",
+      origin,
+      destination: ride.destination,
+    };
+  }
+
+  return null;
+}
+
+function estimateMeta(estimate: RouteEstimate): string {
+  return formatRouteMeta(estimate.distance_km, estimate.duration_min);
+}
 
 function distanceMeters(a: LatLng, b: LatLng): number {
   return distanceKm(a, b) * 1000;
