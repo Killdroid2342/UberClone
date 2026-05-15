@@ -1040,7 +1040,76 @@ function bindDriverAvailabilityToggle(): void {
   });
 }
 
+function renderDriverAvailability(
+  availability: UserProfile["availability"] = isDriverOnline ? "available" : "offline",
+  labelOverride?: string
+): void {
+  const status = document.getElementById("driver-location-status");
+  const heading = document.getElementById("driver-status-heading");
+  const copy = document.getElementById("driver-status-copy");
+  const button = document.getElementById("btn-driver-availability") as HTMLButtonElement;
+  const buttonLabel = document.getElementById("driver-availability-label");
 
+  const normalized = availability || (isDriverOnline ? "available" : "offline");
+  isDriverOnline = normalized !== "offline";
+  if (currentUser?.role === "driver") {
+    currentUser = { ...currentUser, availability: normalized };
+  }
+
+  if (status) {
+    status.textContent = labelOverride || availabilityLabel(normalized);
+    status.classList.toggle("is-offline", normalized === "offline");
+    status.classList.toggle("is-busy", normalized === "busy");
+    status.classList.toggle("is-pending", normalized === "pending");
+  }
+
+  if (heading && copy) {
+    if (normalized === "offline") {
+      heading.textContent = "You're offline";
+      copy.textContent = "Go online when you are ready to receive nearby rider requests.";
+    } else if (normalized === "busy") {
+      heading.textContent = "Driving now";
+      copy.textContent = "Live trip updates and rerouting are active for this ride.";
+    } else if (normalized === "pending") {
+      heading.textContent = "Request pending";
+      copy.textContent = "Review the incoming trip before accepting or going offline.";
+    } else {
+      heading.textContent = "Ready for requests";
+      copy.textContent = "Your driver account is active and available for nearby riders.";
+    }
+  }
+
+  if (button && buttonLabel) {
+    const hasBlockingRide = Boolean(
+      activeDriverRide &&
+      activeDriverRide.status !== "pending_driver" &&
+      !isTerminalRideStatus(activeDriverRide.status)
+    );
+    button.disabled = driverAvailabilityLoading || hasBlockingRide;
+    button.classList.toggle("is-offline", !isDriverOnline);
+    button.setAttribute("aria-pressed", String(isDriverOnline));
+    buttonLabel.textContent = driverAvailabilityLoading
+      ? "Updating"
+      : hasBlockingRide
+        ? "Finish trip"
+        : isDriverOnline
+          ? "Go offline"
+          : "Go online";
+  }
+}
+
+function availabilityLabel(availability: UserProfile["availability"]): string {
+  if (availability === "offline") return "Offline";
+  if (availability === "busy") return "Busy";
+  if (availability === "pending") return "Pending";
+  return "Online";
+}
+
+function driverAvailabilityForRide(ride: Ride | null): UserProfile["availability"] {
+  if (!isDriverOnline) return "offline";
+  if (!ride || isTerminalRideStatus(ride.status)) return "available";
+  return ride.status === "pending_driver" ? "pending" : "busy";
+}
 
 function formatDistanceKm(distanceKm: number): string {
   const miles = distanceKm * 0.621371;
