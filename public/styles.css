@@ -1817,6 +1817,163 @@ svg {
   color: var(--ink);
 }
 
+.feedback-select,
+.feedback-textarea {
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  outline: none;
+  background: var(--surface-soft);
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: border-color var(--ease), box-shadow var(--ease), background var(--ease);
+}
+
+.feedback-select {
+  height: 46px;
+  padding: 0 12px;
+}
+
+.feedback-textarea {
+  min-height: 76px;
+  padding: 12px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.feedback-select:focus,
+.feedback-textarea:focus {
+  border-color: rgba(31, 157, 97, 0.5);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(31, 157, 97, 0.1);
+}
+
+.btn-feedback,
+.btn-issue {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.btn-issue {
+  color: var(--red);
+  border-color: rgba(217, 72, 72, 0.24);
+  background: rgba(217, 72, 72, 0.08);
+}
+
+.btn-issue:hover {
+  color: white;
+  border-color: var(--red);
+  background: var(--red);
+}
+
+.btn-danger {
+  color: var(--red);
+  border-color: rgba(217, 72, 72, 0.28);
+  background: rgba(217, 72, 72, 0.08);
+}
+
+.btn-danger:hover,
+.btn-cancel-ride:hover {
+  color: white;
+  border-color: var(--red);
+  background: var(--red);
+}
+
+.driver-dashboard {
+  width: min(100%, 1060px);
+  padding: 10px 0 30px;
+}
+
+.admin-dashboard {
+  width: min(100%, 1180px);
+  padding: 10px 0 30px;
+}
+
+.dash-header {
+  margin-bottom: 20px;
+}
+
+.dash-header h1 {
+  margin-top: 6px;
+  color: var(--ink);
+  font-size: clamp(2.5rem, 6vw, 4.8rem);
+  font-weight: 800;
+  line-height: 0.98;
+}
+
+.dashboard-meta {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-user-pill {
+  max-width: 180px;
+  overflow: hidden;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.8fr 0.8fr;
+  gap: 16px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.admin-metric {
+  min-height: 136px;
+}
+
+.admin-revenue {
+  grid-column: span 2;
+}
+
+.admin-card {
+  min-height: 260px;
+  padding: 22px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.admin-card-wide {
+  grid-column: span 2;
+}
+
+.admin-map-card,
+.admin-analytics-card,
+.admin-management-card {
+  min-height: 0;
+}
+
+.admin-active-map {
+  height: 320px;
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #dfe8df;
+}
 
 
 .status-card,
