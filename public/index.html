@@ -71,6 +71,14 @@
         </span>
         <span class="role-arrow" aria-hidden="true"><i data-lucide="arrow-right"></i></span>
       </button>
+      <button id="btn-role-admin" class="role-card role-card-admin">
+        <span class="role-icon" aria-hidden="true"><i data-lucide="layout-dashboard"></i></span>
+        <span class="role-copy">
+          <strong>Admin</strong>
+          <small>Monitor rides, driver supply, revenue, and reports.</small>
+        </span>
+        <span class="role-arrow" aria-hidden="true"><i data-lucide="arrow-right"></i></span>
+      </button>
 
       <div class="welcome-stats" aria-hidden="true">
         <div>
@@ -223,6 +231,50 @@
         </button>
       </form>
       <p class="auth-switch">New driver? <a id="link-driver-signup" href="#">Apply now</a></p>
+    </div>
+  </div>
+</section>
+
+<section id="screen-admin-login" class="screen screen-auth hidden">
+  <div class="auth-shell">
+    <aside class="auth-aside auth-aside-admin">
+      <div class="driver-card-preview admin-card-preview" aria-hidden="true">
+        <div class="driver-avatar"><i data-lucide="activity"></i></div>
+        <div>
+          <span>Operations</span>
+          <strong>Live</strong>
+        </div>
+        <div class="driver-card-line"></div>
+      </div>
+      <p class="eyebrow">Admin access</p>
+      <h2>Keep the city moving.</h2>
+      <p>Review ride activity, driver availability, open reports, and platform revenue.</p>
+    </aside>
+
+    <div class="auth-container">
+      <button id="link-back-welcome-a" class="back-btn" type="button">
+        <i data-lucide="chevron-left"></i>
+        <span>Back</span>
+      </button>
+      <div class="auth-header">
+        <div class="auth-icon auth-icon-admin" aria-hidden="true"><i data-lucide="layout-dashboard"></i></div>
+        <h1>Admin sign in</h1>
+        <p>Use the dev admin account</p>
+      </div>
+      <form id="form-admin-login" class="auth-form" autocomplete="off">
+        <div class="input-group">
+          <input type="email" name="email" id="admin-login-email" placeholder=" " required value="admin@myuber.local" />
+          <label for="admin-login-email">Email address</label>
+        </div>
+        <div class="input-group">
+          <input type="password" name="password" id="admin-login-pass" placeholder=" " required value="admin123" />
+          <label for="admin-login-pass">Password</label>
+        </div>
+        <button type="submit" class="btn-primary btn-admin">
+          <span>Sign in</span>
+          <i data-lucide="arrow-right"></i>
+        </button>
+      </form>
     </div>
   </div>
 </section>
@@ -390,6 +442,10 @@
         <strong>Standard</strong>
       </div>
       <div>
+        <span>Demand</span>
+        <strong id="ride-surge">Normal</strong>
+      </div>
+      <div>
         <span>ETA</span>
         <strong id="ride-eta">Choose route</strong>
       </div>
@@ -400,6 +456,29 @@
       <div>
         <span>Fare</span>
         <strong id="ride-fare">--</strong>
+      </div>
+    </div>
+
+    <div id="fare-breakdown-panel" class="fare-breakdown is-hidden" aria-live="polite">
+      <div>
+        <span>Base</span>
+        <strong id="fare-base">--</strong>
+      </div>
+      <div>
+        <span>Distance</span>
+        <strong id="fare-distance-charge">--</strong>
+      </div>
+      <div>
+        <span>Time</span>
+        <strong id="fare-time-charge">--</strong>
+      </div>
+      <div>
+        <span>Surge</span>
+        <strong id="fare-surge-charge">--</strong>
+      </div>
+      <div>
+        <span>Minimum</span>
+        <strong id="fare-minimum-adjustment">--</strong>
       </div>
     </div>
 
@@ -420,6 +499,109 @@
       </div>
     </div>
 
+    <div id="trip-share-panel" class="trip-share-panel is-hidden" aria-live="polite">
+      <div class="panel-heading">
+        <span>Trip sharing</span>
+        <strong id="trip-share-status" class="feedback-meta">Not shared</strong>
+      </div>
+      <div class="share-field">
+        <input id="trip-share-url" type="text" readonly placeholder="Create a live trip link" aria-label="Trip share link" />
+        <a id="trip-share-open" class="icon-btn is-hidden" href="#" target="_blank" rel="noopener" title="Open shared trip" aria-label="Open shared trip">
+          <i data-lucide="external-link"></i>
+        </a>
+      </div>
+      <button id="btn-create-trip-share" class="btn-secondary btn-share-trip" type="button">
+        <i data-lucide="share-2"></i>
+        <span>Create link</span>
+      </button>
+    </div>
+
+    <div id="payment-panel" class="payment-panel is-hidden" aria-live="polite">
+      <div class="panel-heading">
+        <span>Payment</span>
+        <strong id="payment-status" class="payment-status">Authorized</strong>
+      </div>
+      <div class="payment-grid">
+        <div>
+          <span>Fare</span>
+          <strong id="payment-amount">$0.00</strong>
+        </div>
+        <div>
+          <span>Method</span>
+          <strong id="payment-method">Mock Visa ending 4242</strong>
+        </div>
+        <div>
+          <span>Reference</span>
+          <strong id="payment-reference">--</strong>
+        </div>
+      </div>
+      <div id="payment-fare-breakdown" class="fare-breakdown fare-breakdown-compact is-hidden">
+        <div>
+          <span>Base</span>
+          <strong id="payment-fare-base">--</strong>
+        </div>
+        <div>
+          <span>Distance</span>
+          <strong id="payment-fare-distance-charge">--</strong>
+        </div>
+        <div>
+          <span>Time</span>
+          <strong id="payment-fare-time-charge">--</strong>
+        </div>
+        <div>
+          <span>Surge</span>
+          <strong id="payment-fare-surge-charge">--</strong>
+        </div>
+        <div>
+          <span>Minimum</span>
+          <strong id="payment-fare-minimum-adjustment">--</strong>
+        </div>
+      </div>
+      <button id="payment-refund-btn" class="btn-secondary btn-refund-payment is-hidden" type="button">
+        <i data-lucide="rotate-ccw"></i>
+        <span>Simulate refund</span>
+      </button>
+    </div>
+
+    <div id="rider-rating-panel" class="feedback-panel is-hidden" aria-live="polite">
+      <div class="panel-heading">
+        <span>Rating</span>
+        <strong id="rider-rating-meta" class="feedback-meta">Not rated</strong>
+      </div>
+      <div class="rating-buttons" role="radiogroup" aria-label="Rate driver">
+        <button class="rating-btn" type="button" data-rider-rating="1" aria-label="1 star"><i data-lucide="star"></i><span>1</span></button>
+        <button class="rating-btn" type="button" data-rider-rating="2" aria-label="2 stars"><i data-lucide="star"></i><span>2</span></button>
+        <button class="rating-btn" type="button" data-rider-rating="3" aria-label="3 stars"><i data-lucide="star"></i><span>3</span></button>
+        <button class="rating-btn" type="button" data-rider-rating="4" aria-label="4 stars"><i data-lucide="star"></i><span>4</span></button>
+        <button class="rating-btn" type="button" data-rider-rating="5" aria-label="5 stars"><i data-lucide="star"></i><span>5</span></button>
+      </div>
+      <textarea id="rider-rating-comment" class="feedback-textarea" maxlength="280" placeholder="Add a note"></textarea>
+      <button id="btn-submit-rider-rating" class="btn-primary btn-feedback" type="button">
+        <span>Rate driver</span>
+        <i data-lucide="star"></i>
+      </button>
+    </div>
+
+    <div id="rider-issue-panel" class="feedback-panel is-hidden" aria-live="polite">
+      <div class="panel-heading">
+        <span>Report issue</span>
+        <strong id="rider-issue-meta" class="feedback-meta">0 open</strong>
+      </div>
+      <select id="rider-issue-category" class="feedback-select" aria-label="Issue category">
+        <option value="route">Route</option>
+        <option value="payment">Payment</option>
+        <option value="driver">Driver</option>
+        <option value="vehicle">Vehicle</option>
+        <option value="safety">Safety</option>
+        <option value="other">Other</option>
+      </select>
+      <textarea id="rider-issue-description" class="feedback-textarea" maxlength="600" placeholder="What happened?"></textarea>
+      <button id="btn-submit-rider-issue" class="btn-secondary btn-issue" type="button">
+        <i data-lucide="message-square-warning"></i>
+        <span>Submit report</span>
+      </button>
+    </div>
+
     <button id="cancel-ride-btn" class="btn-secondary btn-cancel-ride is-hidden" type="button">
       <i data-lucide="x-circle"></i>
       <span>Cancel ride</span>
@@ -429,6 +611,36 @@
       <span>Confirm pickup</span>
       <i data-lucide="navigation"></i>
     </button>
+
+    <div class="history-panel" aria-live="polite">
+      <div class="panel-heading">
+        <span>Ride history</span>
+        <button id="btn-refresh-rider-history" class="icon-btn" type="button" title="Refresh" aria-label="Refresh ride history">
+          <i data-lucide="refresh-cw"></i>
+        </button>
+      </div>
+      <div id="rider-history-list" class="history-list">
+        <div class="history-empty">No rides yet</div>
+      </div>
+    </div>
+
+    <div class="notification-panel" aria-live="polite">
+      <div class="panel-heading">
+        <span>Notifications</span>
+        <strong id="rider-notifications-count" class="feedback-meta">0 unread</strong>
+      </div>
+      <div class="panel-actions">
+        <button id="btn-refresh-rider-notifications" class="icon-btn" type="button" title="Refresh" aria-label="Refresh notifications">
+          <i data-lucide="refresh-cw"></i>
+        </button>
+        <button id="btn-read-rider-notifications" class="icon-btn" type="button" title="Mark all read" aria-label="Mark rider notifications read">
+          <i data-lucide="check-check"></i>
+        </button>
+      </div>
+      <div id="rider-notifications-list" class="notification-list">
+        <div class="history-empty">No notifications yet</div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -479,6 +691,14 @@
             <strong id="driver-request-distance">--</strong>
           </div>
           <div>
+            <span>Fare</span>
+            <strong id="driver-request-fare">--</strong>
+          </div>
+          <div>
+            <span>Demand</span>
+            <strong id="driver-request-surge">--</strong>
+          </div>
+          <div>
             <span>Rider live</span>
             <strong id="driver-request-rider-location">--</strong>
           </div>
@@ -516,31 +736,266 @@
             <span>Cancel</span>
           </button>
         </div>
+        <div id="driver-rating-panel" class="feedback-panel feedback-panel-driver is-hidden" aria-live="polite">
+          <div class="panel-heading">
+            <span>Rating</span>
+            <strong id="driver-rating-meta" class="feedback-meta">Not rated</strong>
+          </div>
+          <div class="rating-buttons" role="radiogroup" aria-label="Rate rider">
+            <button class="rating-btn" type="button" data-driver-rating="1" aria-label="1 star"><i data-lucide="star"></i><span>1</span></button>
+            <button class="rating-btn" type="button" data-driver-rating="2" aria-label="2 stars"><i data-lucide="star"></i><span>2</span></button>
+            <button class="rating-btn" type="button" data-driver-rating="3" aria-label="3 stars"><i data-lucide="star"></i><span>3</span></button>
+            <button class="rating-btn" type="button" data-driver-rating="4" aria-label="4 stars"><i data-lucide="star"></i><span>4</span></button>
+            <button class="rating-btn" type="button" data-driver-rating="5" aria-label="5 stars"><i data-lucide="star"></i><span>5</span></button>
+          </div>
+          <textarea id="driver-rating-comment" class="feedback-textarea" maxlength="280" placeholder="Add a note"></textarea>
+          <button id="btn-submit-driver-rating" class="btn-primary btn-driver btn-feedback" type="button">
+            <span>Rate rider</span>
+            <i data-lucide="star"></i>
+          </button>
+        </div>
+        <div id="driver-issue-panel" class="feedback-panel feedback-panel-driver is-hidden" aria-live="polite">
+          <div class="panel-heading">
+            <span>Report issue</span>
+            <strong id="driver-issue-meta" class="feedback-meta">0 open</strong>
+          </div>
+          <select id="driver-issue-category" class="feedback-select" aria-label="Issue category">
+            <option value="rider">Rider</option>
+            <option value="route">Route</option>
+            <option value="payment">Payment</option>
+            <option value="safety">Safety</option>
+            <option value="other">Other</option>
+          </select>
+          <textarea id="driver-issue-description" class="feedback-textarea" maxlength="600" placeholder="What happened?"></textarea>
+          <button id="btn-submit-driver-issue" class="btn-secondary btn-issue" type="button">
+            <i data-lucide="message-square-warning"></i>
+            <span>Submit report</span>
+          </button>
+        </div>
       </div>
 
       <div class="metric-card">
         <span>Today</span>
-        <strong>$0.00</strong>
-        <small>No completed rides yet</small>
+        <strong id="driver-today-earnings">$0.00</strong>
+        <small id="driver-earnings-meta">No completed rides yet</small>
       </div>
       <div class="metric-card metric-card-accent">
         <span>Acceptance</span>
-        <strong>100%</strong>
-        <small>Account in good standing</small>
+        <strong id="driver-acceptance-rate">100%</strong>
+        <small id="driver-acceptance-meta">Account in good standing</small>
       </div>
 
-      <div class="driver-map-card">
-        <div class="driver-route">
-          <span class="map-road road-a"></span>
-          <span class="map-road road-b"></span>
-          <span class="map-road road-c"></span>
-          <span class="map-pin pin-a"></span>
-          <span class="map-pin pin-b"></span>
+      <div class="driver-earnings-card">
+        <div class="panel-heading">
+          <span>Earnings</span>
+          <button id="btn-refresh-driver-earnings" class="icon-btn" type="button" title="Refresh" aria-label="Refresh earnings">
+            <i data-lucide="refresh-cw"></i>
+          </button>
+        </div>
+        <div id="driver-earnings-list" class="earnings-list">
+          <div class="history-empty">No completed rides yet</div>
+        </div>
+      </div>
+
+      <div class="driver-notification-card notification-panel">
+        <div class="panel-heading">
+          <span>Notifications</span>
+          <strong id="driver-notifications-count" class="feedback-meta">0 unread</strong>
+        </div>
+        <div class="panel-actions">
+          <button id="btn-refresh-driver-notifications" class="icon-btn" type="button" title="Refresh" aria-label="Refresh notifications">
+            <i data-lucide="refresh-cw"></i>
+          </button>
+          <button id="btn-read-driver-notifications" class="icon-btn" type="button" title="Mark all read" aria-label="Mark driver notifications read">
+            <i data-lucide="check-check"></i>
+          </button>
+        </div>
+        <div id="driver-notifications-list" class="notification-list">
+          <div class="history-empty">No notifications yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="screen-admin-home" class="screen screen-admin-home hidden">
+  <div class="admin-dashboard">
+    <div class="dash-header">
+      <div>
+        <p class="eyebrow">Admin workspace</p>
+        <h1>Operations</h1>
+        <p id="admin-dashboard-meta" class="dashboard-meta">Loading dashboard</p>
+      </div>
+      <div class="admin-header-actions">
+        <span id="admin-user-name" class="admin-user-pill">Admin</span>
+        <button id="btn-refresh-admin-dashboard" class="logout-btn logout-btn-light" title="Refresh" aria-label="Refresh admin dashboard" type="button">
+          <i data-lucide="refresh-cw"></i>
+        </button>
+        <button id="btn-logout-admin" class="logout-btn logout-btn-light" title="Logout" aria-label="Logout" type="button">
+          <i data-lucide="log-out"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="admin-grid">
+      <div class="metric-card admin-metric">
+        <span>Riders</span>
+        <strong id="admin-total-riders">0</strong>
+        <small>Total rider accounts</small>
+      </div>
+      <div class="metric-card admin-metric">
+        <span>Drivers</span>
+        <strong id="admin-total-drivers">0</strong>
+        <small>Total driver accounts</small>
+      </div>
+      <div class="metric-card admin-metric metric-card-accent">
+        <span>Active rides</span>
+        <strong id="admin-active-rides">0</strong>
+        <small id="admin-demand-level">normal (1.00x)</small>
+      </div>
+      <div class="metric-card admin-metric">
+        <span>Open issues</span>
+        <strong id="admin-open-issues">0</strong>
+        <small>Reports needing review</small>
+      </div>
+      <div class="metric-card admin-metric admin-revenue">
+        <span>Gross volume</span>
+        <strong id="admin-gross-total">$0.00</strong>
+        <small>Authorized and paid rides</small>
+      </div>
+      <div class="metric-card admin-metric admin-revenue">
+        <span>Platform fees</span>
+        <strong id="admin-platform-fees">$0.00</strong>
+        <small>Collected on paid rides</small>
+      </div>
+
+      <div class="admin-card admin-card-wide admin-map-card">
+        <div class="panel-heading">
+          <span>Active rides map</span>
+          <strong id="admin-map-meta" class="feedback-meta">0 active</strong>
+        </div>
+        <div id="admin-active-rides-map" class="admin-active-map"></div>
+        <div class="admin-map-legend" aria-hidden="true">
+          <span><i class="legend-dot legend-pickup"></i>Pickup</span>
+          <span><i class="legend-dot legend-destination"></i>Destination</span>
+          <span><i class="legend-dot legend-driver"></i>Driver</span>
+          <span><i class="legend-dot legend-rider"></i>Rider</span>
+        </div>
+      </div>
+
+      <div class="admin-card admin-card-wide admin-analytics-card">
+        <div class="panel-heading">
+          <span>Analytics</span>
+          <strong id="admin-analytics-meta" class="feedback-meta">No ride data</strong>
+        </div>
+        <div id="admin-analytics-grid" class="analytics-grid"></div>
+        <div id="admin-status-mix" class="status-mix"></div>
+      </div>
+
+      <div class="admin-card admin-card-wide admin-management-card">
+        <div class="panel-heading">
+          <span>User & driver management</span>
+          <strong id="admin-management-meta" class="feedback-meta">0 accounts</strong>
+        </div>
+        <div id="admin-users-list" class="admin-list admin-management-list">
+          <div class="history-empty">No accounts yet</div>
+        </div>
+      </div>
+
+      <div class="admin-card admin-card-wide">
+        <div class="panel-heading">
+          <span>Recent rides</span>
+        </div>
+        <div id="admin-rides-list" class="admin-list">
+          <div class="history-empty">No rides yet</div>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <div class="panel-heading">
+          <span>Drivers</span>
+        </div>
+        <div id="admin-drivers-list" class="admin-list">
+          <div class="history-empty">No drivers yet</div>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <div class="panel-heading">
+          <span>Open reports</span>
+        </div>
+        <div id="admin-issues-list" class="admin-list">
+          <div class="history-empty">No open issues</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="screen-trip-share" class="screen screen-trip-share hidden">
+  <div class="share-shell">
+    <div class="share-hero">
+      <div class="brand-row">
+        <div class="brand-mark" aria-hidden="true">MU</div>
+        <div>
+          <p class="eyebrow">Shared trip</p>
+          <h1 id="share-trip-title">Loading trip</h1>
+        </div>
+      </div>
+      <p id="share-trip-body" class="welcome-copy">Live status will update as the ride progresses.</p>
+      <div id="share-route-visual" class="share-route-visual" aria-hidden="true">
+        <span class="route-node start"></span>
+        <span class="route-dash"></span>
+        <span class="route-car"><i data-lucide="car-front"></i></span>
+        <span class="route-dash"></span>
+        <span class="route-node end"></span>
+      </div>
+    </div>
+
+    <div class="share-details">
+      <div class="panel-heading">
+        <span id="share-trip-status">Matching</span>
+        <strong id="share-trip-updated" class="feedback-meta">Updated now</strong>
+      </div>
+      <div class="share-grid">
+        <div>
+          <span>Pickup</span>
+          <strong id="share-trip-pickup">--</strong>
         </div>
         <div>
-          <p class="section-label">Dispatch area</p>
-          <h3>Central city</h3>
+          <span>Destination</span>
+          <strong id="share-trip-destination">--</strong>
         </div>
+        <div>
+          <span>Driver</span>
+          <strong id="share-trip-driver">--</strong>
+        </div>
+        <div>
+          <span>Vehicle</span>
+          <strong id="share-trip-vehicle">--</strong>
+        </div>
+        <div>
+          <span>Trip distance</span>
+          <strong id="share-trip-distance">--</strong>
+        </div>
+        <div>
+          <span>Rider live</span>
+          <strong id="share-trip-rider-location">--</strong>
+        </div>
+        <div>
+          <span>Driver live</span>
+          <strong id="share-trip-driver-location">--</strong>
+        </div>
+      </div>
+      <div class="btn-row share-actions">
+        <button id="btn-refresh-share-trip" class="btn-primary" type="button">
+          <span>Refresh</span>
+          <i data-lucide="refresh-cw"></i>
+        </button>
+        <button id="btn-close-share-view" class="btn-secondary" type="button">
+          <i data-lucide="chevron-left"></i>
+          <span>Home</span>
+        </button>
       </div>
     </div>
   </div>
