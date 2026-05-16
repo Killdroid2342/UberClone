@@ -219,6 +219,43 @@ export async function getDriverRideRequest(): Promise<Ride | null> {
   return res.json();
 }
 
+export async function getRideHistory(): Promise<Ride[]> {
+  const res = await fetch(`${API_URL}/rides/history`, {
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) throw new Error("Failed to load ride history");
+  return res.json();
+}
+
+export async function getDriverEarnings(): Promise<DriverEarnings> {
+  const res = await fetch(`${API_URL}/drivers/me/earnings`, {
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) throw new Error("Failed to load driver earnings");
+  return res.json();
+}
+
+export async function getNotifications(): Promise<NotificationInbox> {
+  const res = await fetch(`${API_URL}/notifications`, {
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) throw new Error("Failed to load notifications");
+  return res.json();
+}
+
+export async function markNotificationRead(notificationId: string): Promise<NotificationInbox> {
+  const res = await fetch(`${API_URL}/notifications/${notificationId}/read`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) throw new Error("Failed to update notification");
+  return res.json();
+}
+
 
 export async function acceptRide(rideId: string): Promise<Ride> {
   const res = await fetch(`${API_URL}/rides/${rideId}/accept`, {
