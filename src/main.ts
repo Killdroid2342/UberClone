@@ -1215,7 +1215,93 @@ function toAbsoluteShareUrl(urlPath: string): string {
   return new URL(urlPath, window.location.origin).toString();
 }
 
+function renderAdminDrivers(dashboard: AdminDashboard): void {
+  const list = document.getElementById("admin-drivers-list");
+  if (!list) return;
+  list.innerHTML = "";
 
+  if (dashboard.drivers.length === 0) {
+    renderAdminListMessage(list, "No drivers yet");
+    return;
+  }
+
+  for (const driver of dashboard.drivers.slice(0, 8)) {
+    const item = document.createElement("div");
+    item.className = "admin-list-item";
+
+    const copy = document.createElement("div");
+    copy.className = "admin-list-copy";
+
+    const title = document.createElement("strong");
+    title.textContent = driver.name;
+
+    const vehicle = driver.vehicle
+      ? `${driver.vehicle.color} ${driver.vehicle.make} ${driver.vehicle.model}`
+      : "No vehicle";
+    const meta = document.createElement("span");
+    meta.textContent = `${availabilityLabel(driver.availability)} - ${vehicle} - ${formatCurrency(driver.today_net, dashboard.currency)} today`;
+
+    const status = document.createElement("em");
+    status.textContent = `${driver.acceptance_rate}%`;
+
+    copy.append(title, meta);
+    item.append(copy, status);
+    list.appendChild(item);
+  }
+}
+
+function renderAdminIssues(dashboard: AdminDashboard): void {
+  const list = document.getElementById("admin-issues-list");
+  if (!list) return;
+  list.innerHTML = "";
+
+  if (dashboard.issues.length === 0) {
+    renderAdminListMessage(list, "No open issues");
+    return;
+  }
+
+  for (const issue of dashboard.issues.slice(0, 6)) {
+    const item = document.createElement("div");
+    item.className = "admin-list-item";
+
+    const copy = document.createElement("div");
+    copy.className = "admin-list-copy";
+
+    const title = document.createElement("strong");
+    title.textContent = `${issue.category} report`;
+
+    const meta = document.createElement("span");
+    meta.textContent = `${issue.reporter_role} - ${issue.description}`;
+
+    const status = document.createElement("em");
+    status.textContent = formatDateTime(issue.created_at);
+
+    copy.append(title, meta);
+    item.append(copy, status);
+    list.appendChild(item);
+  }
+}
+
+function renderAdminDashboardError(message: string): void {
+  clearAdminMapLayers();
+  setText("admin-map-meta", "Map unavailable");
+  setText("admin-analytics-meta", "Could not load");
+  setText("admin-management-meta", "Could not load");
+  ["admin-rides-list", "admin-drivers-list", "admin-issues-list", "admin-users-list", "admin-analytics-grid", "admin-status-mix"].forEach((id) => {
+    const list = document.getElementById(id);
+    if (list) {
+      list.innerHTML = "";
+      renderAdminListMessage(list, message);
+    }
+  });
+}
+
+function renderAdminListMessage(list: HTMLElement, message: string): void {
+  const empty = document.createElement("div");
+  empty.className = "history-empty";
+  empty.textContent = message;
+  list.appendChild(empty);
+}
 
 function renderDriverRequest(ride: Ride | null): void {
   const card = document.getElementById("driver-request-card");
