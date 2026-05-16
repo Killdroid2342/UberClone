@@ -1490,6 +1490,73 @@ svg {
   background: rgba(47, 103, 246, 0.07);
 }
 
+.share-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.share-field input {
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  outline: none;
+  background: white;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.btn-share-trip {
+  width: 100%;
+  margin-top: 10px;
+  color: var(--blue);
+  border-color: rgba(47, 103, 246, 0.22);
+  background: rgba(47, 103, 246, 0.08);
+}
+
+.payment-status {
+  padding: 6px 9px;
+  border-radius: 999px;
+  color: var(--green-dark);
+  background: rgba(31, 157, 97, 0.1);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.payment-status-paid {
+  color: white;
+  background: var(--green);
+}
+
+.payment-status-voided {
+  color: white;
+  background: var(--red);
+}
+
+.payment-status-refunded {
+  color: var(--ink);
+  background: var(--amber);
+}
+
+.payment-grid {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr 1fr;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.share-details {
+  align-self: stretch;
+  padding: clamp(22px, 3.2vw, 34px);
+  background: rgba(255, 255, 255, 0.92);
+}
+
 
 .status-card,
 .metric-card,
