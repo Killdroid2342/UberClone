@@ -217,6 +217,50 @@ export type Ride = {
   share_token?: string;
 };
 
+export type NotificationItem = {
+  id: string;
+  user_id: string;
+  role: "rider" | "driver" | "admin" | string;
+  kind: string;
+  title: string;
+  body: string;
+  ride_id?: string | null;
+  read_at?: string | null;
+  created_at: string;
+};
+
+export type NotificationInbox = {
+  unread_count: number;
+  notifications: NotificationItem[];
+};
+
+export type SharedRide = {
+  id: string;
+  status: RideStatus;
+  pickup: LatLng;
+  destination: LatLng;
+  distance_km?: number;
+  duration_min?: number;
+  driver_location?: LatLng | null;
+  rider_location?: LatLng | null;
+  driver?: Omit<DriverSummary, "id" | "phone"> | null;
+  created_at: string;
+  updated_at: string;
+  matched_at?: string | null;
+  accepted_at?: string | null;
+  arrived_at?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  cancelled_at?: string | null;
+};
+
+export type TripShare = {
+  token: string;
+  url_path: string;
+  created_at: string;
+  ride: SharedRide;
+};
+
 
 export type RideSocketMessage =
   | { type: "ride_update"; ride: Ride }
