@@ -1383,7 +1383,587 @@ function bindIssueReport(scope: FeedbackScope): void {
   });
 }
 
+function setSelectedRating(scope: FeedbackScope, value: number): void {
+  const score = Math.min(5, Math.max(1, Math.round(value)));
+  if (scope === "rider") riderSelectedRating = score;
+  else driverSelectedRating = score;
 
+  const attr = `data-${scope}-rating`;
+  document.querySelectorAll<HTMLButtonElement>(`[${attr}]`).forEach((button) => {
+    const buttonValue = Number(button.getAttribute(attr));
+    button.classList.toggle("is-selected", buttonValue <= score);
+    button.setAttribute("aria-checked", String(buttonValue === score));
+  });
+}
+
+function selectedRatingFor(scope: FeedbackScope): number {
+  return scope === "rider" ? riderSelectedRating : driverSelectedRating;
+}
+
+function activeRatingRideId(scope: FeedbackScope): string | null {
+  return scope === "rider" ? activeRiderRatingRideId : activeDriverRatingRideId;
+}
+
+function setActiveRatingRideId(scope: FeedbackScope, rideId: string | null): void {
+  if (scope === "rider") activeRiderRatingRideId = rideId;
+  else activeDriverRatingRideId = rideId;
+}
+
+function activeIssueRideId(scope: FeedbackScope): string | null {
+  return scope === "rider" ? activeRiderIssueRideId : activeDriverIssueRideId;
+}
+
+function setActiveIssueRideId(scope: FeedbackScope, rideId: string | null): void {
+  if (scope === "rider") activeRiderIssueRideId = rideId;
+  else activeDriverIssueRideId = rideId;
+}
+
+type NotificationScope = "rider" | "driver";
+
+async function refreshNotifications(scope: NotificationScope): Promise<void> {
+  if (!currentUser || currentUser.role !== scope) return;
+
+  const button = document.getElementById(`btn-refresh-${scope}-notifications`) as HTMLButtonElement | null;
+  if (button) button.disabled = true;
+
+  try {
+    const inbox = await getNotifications();
+    renderNotifications(scope, inbox);
+  } catch {
+    renderNotificationsMessage(scope, "Could not load notifications");
+  } finally {
+    if (button) button.disabled = false;
+    refreshDynamicIcons();
+  }
+}
+
+async function readAllNotifications(scope: NotificationScope): Promise<void> {
+  if (!currentUser || currentUser.role !== scope) return;
+
+  try {
+    const inbox = await markAllNotificationsRead();
+    renderNotifications(scope, inbox);
+  } catch {
+    showToast("Could not update notifications", "error");
+  }
+}
+
+function handleRealtimeNotification(notification: NotificationItem, scope: NotificationScope): void {
+  showToast(notification.title, "info");
+  void refreshNotifications(scope);
+}
+
+function renderNotifications(scope: NotificationScope, inbox: NotificationInbox): void {
+  setText(`${scope}-notifications-count`, `${inbox.unread_count} unread`);
+  const list = document.getElementById(`${scope}-notifications-list`);
+  if (!list) return;
+
+  list.innerHTML = "";
+  if (inbox.notifications.length === 0) {
+    renderNotificationsMessage(scope, "No notifications yet");
+    return;
+  }
+
+  for (const notification of inbox.notifications.slice(0, 6)) {
+    list.appendChild(createNotificationItem(scope, notification));
+  }
+}
+
+function createNotificationItem(scope: NotificationScope, notification: NotificationItem): HTMLElement {
+  const item = document.createElement("button");
+  item.type = "button";
+  item.className = "notification-item";
+  item.classList.toggle("is-unread", !notification.read_at);
+
+  const copy = document.createElement("span");
+  copy.className = "notification-copy";
+
+  const title = document.createElement("strong");
+  title.textContent = notification.title;
+
+  const body = document.createElement("small");
+  body.textContent = notification.body;
+
+  const meta = document.createElement("em");
+  meta.textContent = formatDateTime(notification.created_at);
+
+  copy.append(title, body);
+  item.append(copy, meta);
+
+  item.addEventListener("click", async () => {
+    if (notification.read_at) return;
+    try {
+      const inbox = await markNotificationRead(notification.id);
+      renderNotifications(scope, inbox);
+    } catch {
+      showToast("Could not update notification", "error");
+    }
+  });
+
+  return item;
+}
+
+function renderNotificationsMessage(scope: NotificationScope, message: string): void {
+  const list = document.getElementById(`${scope}-notifications-list`);
+  if (!list) return;
+
+  list.innerHTML = "";
+  const empty = document.createElement("div");
+  empty.className = "history-empty";
+  empty.textContent = message;
+  list.appendChild(empty);
+}
+
+async function refreshRideHistory(): Promise<void> {
+  if (!currentUser || currentUser.role !== "rider") return;
+
+  const button = document.getElementById("btn-refresh-rider-history") as HTMLButtonElement | null;
+  if (button) button.disabled = true;
+
+  try {
+    const history = await getRideHistory();
+    renderRideHistory(history);
+  } catch {
+    renderRideHistoryMessage("Could not load rides");
+  } finally {
+    if (button) button.disabled = false;
+    refreshDynamicIcons();
+  }
+}
+
+function renderRideHistory(rides: Ride[]): void {
+  const list = document.getElementById("rider-history-list");
+  if (!list) return;
+
+  list.innerHTML = "";
+  if (rides.length === 0) {
+    renderRideHistoryMessage("No rides yet");
+    return;
+  }
+
+  for (const ride of rides.slice(0, 4)) {
+    list.appendChild(createRideHistoryItem(ride));
+  }
+}
+
+function renderRideHistoryMessage(message: string): void {
+  const list = document.getElementById("rider-history-list");
+  if (!list) return;
+
+  list.innerHTML = "";
+  const empty = document.createElement("div");
+  empty.className = "history-empty";
+  empty.textContent = message;
+  list.appendChild(empty);
+}
+
+function createRideHistoryItem(ride: Ride): HTMLElement {
+  const item = document.createElement("div");
+  item.className = "history-item";
+
+  const copy = document.createElement("div");
+  copy.className = "history-copy";
+
+  const title = document.createElement("strong");
+  title.textContent = ride.driver?.name ? `Ride with ${ride.driver.name}` : `Ride ${compactRideId(ride.id)}`;
+
+  const meta = document.createElement("span");
+  meta.textContent = `${formatDateTime(ride.created_at)} - ${formatDistanceKm(ride.distance_km ?? distanceKm(ride.pickup, ride.destination))}`;
+
+  const payment = document.createElement("small");
+  const paymentText = ride.payment
+    ? `${paymentStatusLabel(ride.payment.status)} ${formatCurrency(ride.payment.amount, ride.payment.currency)}`
+    : formatCurrency(ride.fare);
+  const riderRating = ride.ratings?.rider;
+  const issueCount = ride.issue_reports?.length ?? 0;
+  payment.textContent = [
+    paymentText,
+    riderRating ? `Rated ${riderRating.score}/5` : null,
+    issueCount ? `${issueCount} report${issueCount === 1 ? "" : "s"}` : null,
+  ].filter(Boolean).join(" - ");
+
+  const status = document.createElement("span");
+  status.className = `history-status history-status-${ride.status}`;
+  status.textContent = rideStatusLabel(ride.status);
+
+  copy.append(title, meta, payment);
+  item.append(copy, status);
+  return item;
+}
+
+async function refreshDriverEarnings(): Promise<void> {
+  if (!currentUser || currentUser.role !== "driver") return;
+
+  const button = document.getElementById("btn-refresh-driver-earnings") as HTMLButtonElement | null;
+  if (button) button.disabled = true;
+
+  try {
+    const earnings = await getDriverEarnings();
+    renderDriverEarnings(earnings);
+  } catch {
+    renderDriverEarningsMessage("Could not load earnings");
+  } finally {
+    if (button) button.disabled = false;
+    refreshDynamicIcons();
+  }
+}
+
+function renderDriverEarnings(earnings: DriverEarnings): void {
+  setText("driver-today-earnings", formatCurrency(earnings.today_net, earnings.currency));
+  setText(
+    "driver-earnings-meta",
+    `${earnings.today_rides} ${earnings.today_rides === 1 ? "ride" : "rides"} today - ${formatCurrency(earnings.net_total, earnings.currency)} net after ${formatCurrency(earnings.platform_fee_total, earnings.currency)} in fees`
+  );
+  setText("driver-acceptance-rate", `${earnings.acceptance_rate}%`);
+  setText(
+    "driver-acceptance-meta",
+    `${earnings.completed_rides} completed ${earnings.completed_rides === 1 ? "ride" : "rides"}`
+  );
+
+  const list = document.getElementById("driver-earnings-list");
+  if (!list) return;
+
+  list.innerHTML = "";
+  if (earnings.rides.length === 0) {
+    renderDriverEarningsMessage("No completed rides yet");
+    return;
+  }
+
+  for (const ride of earnings.rides.slice(0, 5)) {
+    const item = document.createElement("div");
+    item.className = "earning-item";
+
+    const copy = document.createElement("div");
+    copy.className = "earning-copy";
+
+    const title = document.createElement("strong");
+    title.textContent = `Ride ${compactRideId(ride.ride_id)}`;
+
+    const meta = document.createElement("span");
+    meta.textContent = `${formatDateTime(ride.completed_at)} - ${paymentStatusLabel(ride.payment_status)}`;
+
+    const fee = document.createElement("small");
+    fee.textContent = ride.payment_status === "refunded"
+      ? `Refunded ${formatCurrency(ride.refund_amount, ride.currency)}`
+      : `Gross ${formatCurrency(ride.gross, ride.currency)} - platform fee ${formatCurrency(ride.platform_fee, ride.currency)} (${formatPercent(ride.platform_fee_rate)})`;
+
+    const net = document.createElement("strong");
+    net.className = "earning-net";
+    net.textContent = formatCurrency(ride.net, ride.currency);
+
+    copy.append(title, meta, fee);
+    item.append(copy, net);
+    list.appendChild(item);
+  }
+}
+
+function renderDriverEarningsMessage(message: string): void {
+  const list = document.getElementById("driver-earnings-list");
+  if (!list) return;
+
+  list.innerHTML = "";
+  const empty = document.createElement("div");
+  empty.className = "history-empty";
+  empty.textContent = message;
+  list.appendChild(empty);
+}
+
+async function refreshAdminDashboard(): Promise<void> {
+  if (!currentUser || currentUser.role !== "admin") return;
+
+  const button = document.getElementById("btn-refresh-admin-dashboard") as HTMLButtonElement | null;
+  if (button) button.disabled = true;
+
+  try {
+    const dashboard = await getAdminDashboard();
+    renderAdminDashboard(dashboard);
+  } catch {
+    renderAdminDashboardError("Could not load admin dashboard");
+  } finally {
+    if (button) button.disabled = false;
+    refreshDynamicIcons();
+  }
+}
+
+function renderAdminDashboard(dashboard: AdminDashboard): void {
+  setText("admin-total-riders", String(dashboard.totals.riders));
+  setText("admin-total-drivers", String(dashboard.totals.drivers));
+  setText("admin-active-rides", String(dashboard.totals.active_rides));
+  setText("admin-open-issues", String(dashboard.totals.open_issues));
+  setText("admin-gross-total", formatCurrency(dashboard.revenue.gross_total, dashboard.currency));
+  setText("admin-platform-fees", formatCurrency(dashboard.revenue.platform_fee_total, dashboard.currency));
+  setText("admin-demand-level", `${dashboard.demand.demand_level} (${dashboard.demand.surge_multiplier.toFixed(2)}x)`);
+  setText(
+    "admin-map-meta",
+    `${dashboard.active_rides.length} active - ${dashboard.demand.available_drivers} available drivers`
+  );
+  setText(
+    "admin-analytics-meta",
+    `${dashboard.totals.rides} rides - ${formatAnalyticsPercent(dashboard.analytics.completion_rate)} complete`
+  );
+  setText("admin-management-meta", `${dashboard.users.length} accounts`);
+  setText(
+    "admin-dashboard-meta",
+    `Updated ${formatDateTime(dashboard.generated_at)} - ${dashboard.totals.online_drivers} drivers online`
+  );
+
+  renderAdminActiveRidesMap(dashboard.active_rides, dashboard.drivers);
+  renderAdminAnalytics(dashboard);
+  renderAdminUsers(dashboard);
+  renderAdminRides(dashboard);
+  renderAdminDrivers(dashboard);
+  renderAdminIssues(dashboard);
+}
+
+function renderAdminAnalytics(dashboard: AdminDashboard): void {
+  const grid = document.getElementById("admin-analytics-grid");
+  const statusMix = document.getElementById("admin-status-mix");
+
+  if (grid) {
+    grid.innerHTML = "";
+    const analytics = dashboard.analytics;
+    const metrics = [
+      {
+        label: "Completion",
+        value: formatAnalyticsPercent(analytics.completion_rate),
+        detail: `${dashboard.totals.completed_rides} completed rides`,
+        percent: analytics.completion_rate,
+      },
+      {
+        label: "Driver acceptance",
+        value: formatAnalyticsPercent(analytics.driver_acceptance_rate),
+        detail: `${dashboard.totals.online_drivers} drivers online`,
+        percent: analytics.driver_acceptance_rate,
+      },
+      {
+        label: "Paid conversion",
+        value: formatAnalyticsPercent(analytics.paid_conversion_rate),
+        detail: `${formatCurrency(dashboard.revenue.paid_total, dashboard.currency)} paid volume`,
+        percent: analytics.paid_conversion_rate,
+      },
+      {
+        label: "Average fare",
+        value: formatCurrency(analytics.average_fare, dashboard.currency),
+        detail: `${formatDistanceKm(analytics.average_trip_distance_km)} avg trip`,
+      },
+      {
+        label: "Issue rate",
+        value: formatAnalyticsPercent(analytics.issue_rate),
+        detail: `${dashboard.totals.open_issues} open reports`,
+        percent: analytics.issue_rate,
+        inverse: true,
+      },
+      {
+        label: "Supply gap",
+        value: String(analytics.active_supply_gap),
+        detail: `${dashboard.demand.active_demand} demand / ${dashboard.demand.available_drivers} available`,
+      },
+    ];
+
+    for (const metric of metrics) {
+      const tile = document.createElement("div");
+      tile.className = "analytics-tile";
+
+      const label = document.createElement("span");
+      label.textContent = metric.label;
+
+      const value = document.createElement("strong");
+      value.textContent = metric.value;
+
+      const detail = document.createElement("small");
+      detail.textContent = metric.detail;
+
+      tile.append(label, value, detail);
+
+      if (typeof metric.percent === "number") {
+        const meter = document.createElement("div");
+        meter.className = "analytics-meter";
+        const fill = document.createElement("div");
+        fill.className = metric.inverse ? "analytics-meter-fill analytics-meter-alert" : "analytics-meter-fill";
+        fill.style.width = `${Math.min(Math.max(metric.percent, 0), 100)}%`;
+        meter.appendChild(fill);
+        tile.appendChild(meter);
+      }
+
+      grid.appendChild(tile);
+    }
+  }
+
+  if (!statusMix) return;
+  statusMix.innerHTML = "";
+  const statusEntries = Object.entries(dashboard.analytics.status_counts)
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  if (statusEntries.length === 0) {
+    renderAdminListMessage(statusMix, "No ride status data yet");
+    return;
+  }
+
+  const total = Math.max(dashboard.totals.rides, 1);
+  for (const [status, count] of statusEntries) {
+    const item = document.createElement("div");
+    item.className = "status-mix-item";
+
+    const row = document.createElement("div");
+    row.className = "status-mix-row";
+    const label = document.createElement("span");
+    label.textContent = rideStatusLabel(status as RideStatus);
+    const value = document.createElement("strong");
+    value.textContent = String(count);
+    row.append(label, value);
+
+    const bar = document.createElement("div");
+    bar.className = "status-bar";
+    const fill = document.createElement("div");
+    fill.className = "status-bar-fill";
+    fill.style.width = `${(count / total) * 100}%`;
+    fill.style.background = adminStatusColor(status);
+    bar.appendChild(fill);
+
+    item.append(row, bar);
+    statusMix.appendChild(item);
+  }
+}
+
+function renderAdminUsers(dashboard: AdminDashboard): void {
+  const list = document.getElementById("admin-users-list");
+  if (!list) return;
+  list.innerHTML = "";
+
+  if (dashboard.users.length === 0) {
+    renderAdminListMessage(list, "No accounts yet");
+    return;
+  }
+
+  for (const user of dashboard.users) {
+    const item = document.createElement("div");
+    item.className = "admin-list-item admin-management-item";
+
+    const copy = document.createElement("div");
+    copy.className = "admin-list-copy";
+
+    const title = document.createElement("strong");
+    title.textContent = user.name;
+
+    const meta = document.createElement("span");
+    meta.textContent = `${roleLabel(user.role)} - ${user.email}${user.phone ? ` - ${user.phone}` : ""}`;
+
+    const detail = document.createElement("span");
+    detail.textContent = adminUserDetail(user, dashboard.currency);
+
+    copy.append(title, meta, detail);
+
+    const actions = document.createElement("div");
+    actions.className = "admin-row-actions";
+
+    const chip = document.createElement("span");
+    const suspended = user.account_status === "suspended";
+    chip.className = suspended ? "account-chip account-chip-suspended" : "account-chip account-chip-active";
+    chip.textContent = suspended ? "Suspended" : "Active";
+    actions.appendChild(chip);
+
+    const statusButton = createAdminActionButton(
+      suspended ? "Activate" : "Suspend",
+      suspended ? "check-circle-2" : "ban"
+    );
+    statusButton.addEventListener("click", () => {
+      void handleAdminUserStatus(user, statusButton);
+    });
+    actions.appendChild(statusButton);
+
+    if (user.role === "driver" && user.availability !== "offline") {
+      const offlineButton = createAdminActionButton("Offline", "power");
+      if (user.availability === "busy") {
+        offlineButton.disabled = true;
+        offlineButton.title = "Driver is on an active trip";
+      }
+      offlineButton.addEventListener("click", () => {
+        void handleAdminForceDriverOffline(user, offlineButton);
+      });
+      actions.appendChild(offlineButton);
+    }
+
+    item.append(copy, actions);
+    list.appendChild(item);
+  }
+}
+
+function createAdminActionButton(label: string, iconName: string): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "mini-action-btn";
+
+  const icon = document.createElement("i");
+  icon.setAttribute("data-lucide", iconName);
+
+  const text = document.createElement("span");
+  text.textContent = label;
+
+  button.append(icon, text);
+  return button;
+}
+
+async function handleAdminUserStatus(user: AdminUserSummary, button: HTMLButtonElement): Promise<void> {
+  const nextStatus = user.account_status === "suspended" ? "active" : "suspended";
+  setLoading(button, true);
+  try {
+    await updateAdminUserStatus(user.role, user.id, nextStatus);
+    showToast(`${user.name} ${nextStatus === "active" ? "reactivated" : "suspended"}`, "success");
+    await refreshAdminDashboard();
+  } catch (err: any) {
+    showToast(err.message || "Could not update account", "error");
+  } finally {
+    setLoading(button, false);
+  }
+}
+
+async function handleAdminForceDriverOffline(user: AdminUserSummary, button: HTMLButtonElement): Promise<void> {
+  setLoading(button, true);
+  try {
+    await forceAdminDriverOffline(user.id);
+    showToast(`${user.name} is offline`, "success");
+    await refreshAdminDashboard();
+  } catch (err: any) {
+    showToast(err.message || "Could not force driver offline", "error");
+  } finally {
+    setLoading(button, false);
+  }
+}
+
+function renderAdminRides(dashboard: AdminDashboard): void {
+  const list = document.getElementById("admin-rides-list");
+  if (!list) return;
+  list.innerHTML = "";
+
+  if (dashboard.recent_rides.length === 0) {
+    renderAdminListMessage(list, "No rides yet");
+    return;
+  }
+
+  for (const ride of dashboard.recent_rides) {
+    const item = document.createElement("div");
+    item.className = "admin-list-item";
+
+    const copy = document.createElement("div");
+    copy.className = "admin-list-copy";
+
+    const title = document.createElement("strong");
+    title.textContent = ride.rider?.name
+      ? `${ride.rider.name}${ride.driver ? ` -> ${ride.driver.name}` : ""}`
+      : `Ride ${compactRideId(ride.id)}`;
+
+    const meta = document.createElement("span");
+    meta.textContent = `${formatDateTime(ride.created_at)} - ${formatCurrency(ride.fare, ride.currency)} - ${paymentStatusLabel(ride.payment_status || undefined)}`;
+
+    const status = document.createElement("em");
+    status.textContent = rideStatusLabel(ride.status);
+
+    copy.append(title, meta);
+    item.append(copy, status);
+    list.appendChild(item);
+  }
+}
 
 function renderAdminDrivers(dashboard: AdminDashboard): void {
   const list = document.getElementById("admin-drivers-list");
