@@ -1060,6 +1060,161 @@ function resetRiderRideStatus(): void {
   renderRiderRideStatus(null);
 }
 
+function renderPaymentPanel(ride: Ride | null): void {
+  const panel = document.getElementById("payment-panel");
+  const status = document.getElementById("payment-status");
+  const amount = document.getElementById("payment-amount");
+  const method = document.getElementById("payment-method");
+  const reference = document.getElementById("payment-reference");
+  const refundButton = document.getElementById("payment-refund-btn") as HTMLButtonElement | null;
+
+  if (!panel || !status || !amount || !method || !reference) return;
+
+  if (!ride?.payment) {
+    panel.classList.add("is-hidden");
+    refundButton?.classList.add("is-hidden");
+    activeRefundRideId = null;
+    renderPaymentFareBreakdown(null);
+    return;
+  }
+
+  const payment = ride.payment;
+  const canRefund = ride.status === "completed" && payment.status === "paid";
+  panel.classList.remove("is-hidden");
+  status.textContent = paymentStatusLabel(payment.status);
+  status.className = `payment-status payment-status-${payment.status}`;
+  amount.textContent = formatCurrency(payment.amount, payment.currency);
+  method.textContent = payment.method || "Mock payment";
+  reference.textContent = payment.receipt_number || payment.authorization_code || compactRideId(payment.id);
+  activeRefundRideId = canRefund ? ride.id : null;
+  if (refundButton) {
+    refundButton.classList.toggle("is-hidden", !canRefund);
+    refundButton.disabled = !canRefund;
+  }
+  renderPaymentFareBreakdown(ride.fare_breakdown || payment.fare_breakdown || null);
+}
+
+function renderPaymentFareBreakdown(breakdown: FareBreakdown | null): void {
+  const panel = document.getElementById("payment-fare-breakdown");
+  if (!panel) return;
+
+  if (!breakdown) {
+    panel.classList.add("is-hidden");
+    setText("payment-fare-base", "--");
+    setText("payment-fare-distance-charge", "--");
+    setText("payment-fare-time-charge", "--");
+    setText("payment-fare-surge-charge", "--");
+    setText("payment-fare-minimum-adjustment", "--");
+    return;
+  }
+
+  panel.classList.remove("is-hidden");
+  setText("payment-fare-base", formatCurrency(breakdown.base_fare, breakdown.currency));
+  setText("payment-fare-distance-charge", formatCurrency(breakdown.distance_charge, breakdown.currency));
+  setText("payment-fare-time-charge", formatCurrency(breakdown.time_charge, breakdown.currency));
+  setText(
+    "payment-fare-surge-charge",
+    breakdown.surge_multiplier > 1
+      ? `${formatCurrency(breakdown.surge_charge, breakdown.currency)} (${breakdown.surge_multiplier.toFixed(2)}x)`
+      : "None"
+  );
+  setText(
+    "payment-fare-minimum-adjustment",
+    breakdown.minimum_adjustment > 0
+      ? formatCurrency(breakdown.minimum_adjustment, breakdown.currency)
+      : "None"
+  );
+}
+
+function renderTripSharePanel(ride: Ride | null, share?: TripShare): void {
+  const panel = document.getElementById("trip-share-panel");
+  const input = document.getElementById("trip-share-url") as HTMLInputElement | null;
+  const status = document.getElementById("trip-share-status");
+  const button = document.getElementById("btn-create-trip-share") as HTMLButtonElement | null;
+  const openLink = document.getElementById("trip-share-open") as HTMLAnchorElement | null;
+  if (!panel || !input || !status || !button || !openLink) return;
+
+  if (!ride) {
+    panel.classList.add("is-hidden");
+    activeShareRideId = null;
+    activeShareUrl = null;
+    input.value = "";
+    status.textContent = "Not shared";
+    openLink.classList.add("is-hidden");
+    return;
+  }
+
+  activeShareRideId = ride.id;
+  panel.classList.remove("is-hidden");
+
+  const token = share?.token || ride.share_token;
+  if (share) {
+    activeShareUrl = toAbsoluteShareUrl(share.url_path);
+  } else if (!token) {
+    activeShareUrl = null;
+  }
+
+  if (token && !activeShareUrl) {
+    activeShareUrl = toAbsoluteShareUrl(`/?share=${encodeURIComponent(token)}`);
+  }
+
+  input.value = activeShareUrl || "";
+  input.placeholder = "Create a live trip link";
+  status.textContent = activeShareUrl ? "Live link ready" : "Not shared";
+  button.querySelector("span")!.textContent = activeShareUrl ? "Copy link" : "Create link";
+  openLink.href = activeShareUrl || "#";
+  openLink.classList.toggle("is-hidden", !activeShareUrl);
+}
+
+function bindTripSharing(): void {
+  const button = document.getElementById("btn-create-trip-share") as HTMLButtonElement | null;
+  if (!button) return;
+
+  button.addEventListener("click", async () => {
+    if (!activeShareRideId) return;
+
+    setLoading(button, true);
+    try {
+      let url = activeShareUrl;
+      let share: TripShare | null = null;
+      if (!url) {
+        share = await createRideShare(activeShareRideId);
+        url = toAbsoluteShareUrl(share.url_path);
+      }
+
+      activeShareUrl = url;
+      if (share && activeRiderRide) {
+        activeRiderRide = { ...activeRiderRide, share_token: share.token };
+      }
+      const input = document.getElementById("trip-share-url") as HTMLInputElement | null;
+      const status = document.getElementById("trip-share-status");
+      const openLink = document.getElementById("trip-share-open") as HTMLAnchorElement | null;
+      const label = button.querySelector("span");
+      if (input) input.value = url;
+      if (status) status.textContent = "Live link ready";
+      if (label) label.textContent = "Copy link";
+      if (openLink) {
+        openLink.href = url;
+        openLink.classList.remove("is-hidden");
+      }
+
+      await copyText(url);
+      showToast("Trip link copied", "success");
+    } catch (err: any) {
+      showToast(err.message || "Could not share trip", "error");
+    } finally {
+      setLoading(button, false);
+      const label = button.querySelector("span");
+      if (label && activeShareUrl) label.textContent = "Copy link";
+      refreshDynamicIcons();
+    }
+  });
+}
+
+function toAbsoluteShareUrl(urlPath: string): string {
+  return new URL(urlPath, window.location.origin).toString();
+}
+
 
 
 function renderDriverRequest(ride: Ride | null): void {
