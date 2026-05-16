@@ -319,7 +319,85 @@ export type AdminUserSummary = {
   today_net?: number;
 };
 
+export type AdminAnalytics = {
+  completion_rate: number;
+  cancellation_rate: number;
+  no_driver_rate: number;
+  paid_conversion_rate: number;
+  refund_rate: number;
+  driver_acceptance_rate: number;
+  online_driver_rate: number;
+  issue_rate: number;
+  average_fare: number;
+  average_trip_distance_km: number;
+  average_trip_duration_min: number;
+  active_supply_gap: number;
+  status_counts: Record<string, number>;
+  payment_status_counts: Record<string, number>;
+};
 
+export type AdminDashboard = {
+  generated_at: string;
+  currency: string;
+  totals: {
+    riders: number;
+    drivers: number;
+    rides: number;
+    active_rides: number;
+    completed_rides: number;
+    cancelled_rides: number;
+    open_issues: number;
+    online_drivers: number;
+  };
+  revenue: {
+    gross_total: number;
+    paid_total: number;
+    platform_fee_total: number;
+    refund_total: number;
+    platform_fee_rate: number;
+  };
+  demand: {
+    surge_multiplier: number;
+    demand_level: string;
+    surge_reason: string;
+    active_demand: number;
+    available_drivers: number;
+  };
+  analytics: AdminAnalytics;
+  active_rides: AdminRideSummary[];
+  recent_rides: AdminRideSummary[];
+  drivers: AdminDriverSummary[];
+  users: AdminUserSummary[];
+  issues: Array<RideIssueReport & { ride: AdminRideSummary | null }>;
+};
+
+export type DriverEarningRide = {
+  ride_id: string;
+  gross: number;
+  original_gross: number;
+  platform_fee: number;
+  platform_fee_rate: number;
+  net: number;
+  currency: string;
+  payment_status: string;
+  refund_amount: number;
+  completed_at?: string | null;
+  pickup?: LatLng;
+  destination?: LatLng;
+};
+
+export type DriverEarnings = {
+  currency: string;
+  platform_fee_rate: number;
+  gross_total: number;
+  platform_fee_total: number;
+  net_total: number;
+  today_net: number;
+  today_rides: number;
+  completed_rides: number;
+  acceptance_rate: number;
+  rides: DriverEarningRide[];
+};
 
 export type RideSocketMessage =
   | { type: "ride_update"; ride: Ride }
