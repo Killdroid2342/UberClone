@@ -1215,6 +1215,176 @@ function toAbsoluteShareUrl(urlPath: string): string {
   return new URL(urlPath, window.location.origin).toString();
 }
 
+async function copyText(value: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const input = document.getElementById("trip-share-url") as HTMLInputElement | null;
+  if (!input) return;
+  input.focus();
+  input.select();
+  document.execCommand("copy");
+}
+
+type FeedbackScope = "rider" | "driver";
+
+function renderRiderFeedbackPanels(ride: Ride | null): void {
+  renderRatingPanel("rider", ride, "rider", "Rate driver");
+  renderIssuePanel("rider", ride);
+}
+
+function renderDriverFeedbackPanels(ride: Ride | null): void {
+  renderRatingPanel("driver", ride, "driver", "Rate rider");
+  renderIssuePanel("driver", ride);
+}
+
+function renderRatingPanel(
+  scope: FeedbackScope,
+  ride: Ride | null,
+  actorRole: "rider" | "driver",
+  submitLabel: string
+): void {
+  const panel = document.getElementById(`${scope}-rating-panel`);
+  const meta = document.getElementById(`${scope}-rating-meta`);
+  const textarea = document.getElementById(`${scope}-rating-comment`) as HTMLTextAreaElement | null;
+  const submit = document.getElementById(`btn-submit-${scope}-rating`) as HTMLButtonElement | null;
+  if (!panel || !meta || !textarea || !submit) return;
+
+  const canRate = Boolean(
+    ride &&
+    ride.status === "completed" &&
+    (actorRole === "rider" ? ride.driver_id : ride.rider_id)
+  );
+
+  if (!ride || !canRate) {
+    panel.classList.add("is-hidden");
+    setActiveRatingRideId(scope, null);
+    return;
+  }
+
+  const existing = ride.ratings?.[actorRole];
+  const score = existing?.score ?? 5;
+  panel.classList.remove("is-hidden");
+  setActiveRatingRideId(scope, ride.id);
+  setSelectedRating(scope, score);
+  meta.textContent = existing ? `Rated ${existing.score}/5` : "Not rated";
+
+  if (textarea.dataset.rideId !== ride.id || existing) {
+    textarea.value = existing?.comment ?? "";
+    textarea.dataset.rideId = ride.id;
+  }
+
+  const submitText = submit.querySelector("span");
+  if (submitText) submitText.textContent = existing ? "Update rating" : submitLabel;
+}
+
+function renderIssuePanel(scope: FeedbackScope, ride: Ride | null): void {
+  const panel = document.getElementById(`${scope}-issue-panel`);
+  const meta = document.getElementById(`${scope}-issue-meta`);
+  const textarea = document.getElementById(`${scope}-issue-description`) as HTMLTextAreaElement | null;
+  if (!panel || !meta || !textarea) return;
+
+  if (!ride) {
+    panel.classList.add("is-hidden");
+    setActiveIssueRideId(scope, null);
+    return;
+  }
+
+  const issueCount = ride.issue_reports?.length ?? 0;
+  panel.classList.remove("is-hidden");
+  setActiveIssueRideId(scope, ride.id);
+  meta.textContent = `${issueCount} open ${issueCount === 1 ? "report" : "reports"}`;
+
+  if (textarea.dataset.rideId !== ride.id) {
+    textarea.value = "";
+    textarea.dataset.rideId = ride.id;
+  }
+}
+
+function bindRatingControls(scope: FeedbackScope): void {
+  const attr = `data-${scope}-rating`;
+  document.querySelectorAll<HTMLButtonElement>(`[${attr}]`).forEach((button) => {
+    button.addEventListener("click", () => {
+      const value = Number(button.getAttribute(attr));
+      if (!Number.isFinite(value)) return;
+      setSelectedRating(scope, value);
+    });
+  });
+  setSelectedRating(scope, selectedRatingFor(scope));
+}
+
+function bindRatingSubmission(scope: FeedbackScope): void {
+  const button = document.getElementById(`btn-submit-${scope}-rating`) as HTMLButtonElement | null;
+  const textarea = document.getElementById(`${scope}-rating-comment`) as HTMLTextAreaElement | null;
+  if (!button || !textarea) return;
+
+  button.addEventListener("click", async () => {
+    const rideId = activeRatingRideId(scope);
+    if (!rideId) return;
+
+    let updatedRide: Ride | null = null;
+    setLoading(button, true);
+    try {
+      updatedRide = await rateRide(rideId, selectedRatingFor(scope), textarea.value.trim());
+      showToast("Rating saved", "success");
+    } catch (err: any) {
+      showToast(err.message || "Could not save rating", "error");
+    } finally {
+      setLoading(button, false);
+    }
+
+    if (!updatedRide) return;
+    if (scope === "rider") {
+      renderRiderRideStatus(updatedRide);
+      void refreshRideHistory();
+    } else {
+      renderDriverRequest(updatedRide);
+    }
+  });
+}
+
+function bindIssueReport(scope: FeedbackScope): void {
+  const button = document.getElementById(`btn-submit-${scope}-issue`) as HTMLButtonElement | null;
+  const category = document.getElementById(`${scope}-issue-category`) as HTMLSelectElement | null;
+  const description = document.getElementById(`${scope}-issue-description`) as HTMLTextAreaElement | null;
+  if (!button || !category || !description) return;
+
+  button.addEventListener("click", async () => {
+    const rideId = activeIssueRideId(scope);
+    if (!rideId) return;
+    const detail = description.value.trim();
+    if (!detail) {
+      showToast("Describe the issue before submitting", "error");
+      return;
+    }
+
+    let updatedRide: Ride | null = null;
+    setLoading(button, true);
+    try {
+      updatedRide = await reportRideIssue(rideId, category.value, detail);
+      showToast("Issue report submitted", "success");
+    } catch (err: any) {
+      showToast(err.message || "Could not report issue", "error");
+    } finally {
+      setLoading(button, false);
+    }
+
+    if (!updatedRide) return;
+    description.value = "";
+    if (scope === "rider") {
+      renderRiderRideStatus(updatedRide);
+      renderPaymentPanel(updatedRide);
+      void refreshRideHistory();
+    } else {
+      renderDriverRequest(updatedRide);
+    }
+  });
+}
+
+
+
 function renderAdminDrivers(dashboard: AdminDashboard): void {
   const list = document.getElementById("admin-drivers-list");
   if (!list) return;
