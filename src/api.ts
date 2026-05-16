@@ -11,8 +11,16 @@ import type {
   RouteEstimate,
   Ride,
   RideStatus,
+  DriverEarnings,
+  AdminDashboard,
+  AdminDriverSummary,
+  AdminUserSummary,
+  NotificationInbox,
+  TripShare,
+  SharedRide,
   RideSocketMessage,
   DriverSocketMessage,
+  ShareSocketMessage,
 } from "./types.js";
 
 export function getToken(): string | null {
@@ -83,6 +91,21 @@ export async function signupDriver(data: DriverSignupData): Promise<UserProfile>
 
 export async function loginDriver(data: LoginData): Promise<LoginResponse> {
   const res = await fetch(`${API_URL}/drivers/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Login failed");
+  }
+
+  return res.json();
+}
+
+export async function loginAdmin(data: LoginData): Promise<LoginResponse> {
+  const res = await fetch(`${API_URL}/admin/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -196,6 +219,7 @@ export async function getDriverRideRequest(): Promise<Ride | null> {
   return res.json();
 }
 
+
 export async function acceptRide(rideId: string): Promise<Ride> {
   const res = await fetch(`${API_URL}/rides/${rideId}/accept`, {
     method: "POST",
@@ -242,6 +266,20 @@ export async function updateRideStatus(
   return res.json();
 }
 
+export async function simulateRefund(rideId: string): Promise<Ride> {
+  const res = await fetch(`${API_URL}/rides/${rideId}/refund`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to simulate refund");
+  }
+
+  return res.json();
+}
+
 export async function cancelRide(rideId: string): Promise<Ride> {
   const res = await fetch(`${API_URL}/rides/${rideId}/cancel`, {
     method: "POST",
@@ -251,6 +289,44 @@ export async function cancelRide(rideId: string): Promise<Ride> {
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.detail || "Failed to cancel ride");
+  }
+
+  return res.json();
+}
+
+export async function rateRide(
+  rideId: string,
+  score: number,
+  comment: string
+): Promise<Ride> {
+  const res = await fetch(`${API_URL}/rides/${rideId}/ratings`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ score, comment }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to submit rating");
+  }
+
+  return res.json();
+}
+
+export async function reportRideIssue(
+  rideId: string,
+  category: string,
+  description: string
+): Promise<Ride> {
+  const res = await fetch(`${API_URL}/rides/${rideId}/issues`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ category, description }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to report issue");
   }
 
   return res.json();
@@ -275,5 +351,16 @@ export function connectDriverSocket(
   return connectRealtimeSocket(`/ws/drivers/${driverId}`, {
     ...options,
     onMessage: (data) => onMessage(data as DriverSocketMessage),
+  });
+}
+
+export function connectShareSocket(
+  token: string,
+  onMessage: (data: ShareSocketMessage) => void,
+  options: Partial<Omit<RealtimeSocketOptions, "onMessage">> = {}
+): RealtimeSocket {
+  return connectRealtimeSocket(`/ws/shares/${encodeURIComponent(token)}`, {
+    ...options,
+    onMessage: (data) => onMessage(data as ShareSocketMessage),
   });
 }
