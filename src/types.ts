@@ -40,7 +40,10 @@ export type UserProfile = {
   email: string;
   name: string;
   phone: string;
-  role: "rider" | "driver";
+  role: "rider" | "driver" | "admin";
+  account_status?: "active" | "suspended" | string;
+  average_rating?: number | null;
+  rating_count?: number;
   vehicle?: {
     make: string;
     model: string;
@@ -64,10 +67,33 @@ export type LoginResponse = {
   user: UserProfile;
 };
 
+export type FareBreakdown = {
+  currency: string;
+  base_fare: number;
+  distance_charge: number;
+  time_charge: number;
+  subtotal: number;
+  minimum_adjustment: number;
+  surge_multiplier: number;
+  surge_charge: number;
+  surge_reason: string;
+  demand_level: "normal" | "elevated" | "busy" | "peak" | string;
+  active_demand: number;
+  available_drivers: number;
+  total: number;
+  distance_miles: number;
+  duration_min: number;
+  distance_rate_per_mile: number;
+  time_rate_per_minute: number;
+  minimum_fare: number;
+};
+
 export type RouteEstimate = {
   distance_km: number;
   duration_min: number;
+  currency: string;
   fare: number;
+  fare_breakdown: FareBreakdown;
   route: LatLng[];
   steps: RouteStep[];
   source: string;
@@ -103,6 +129,60 @@ export type DriverSummary = {
   phone: string;
   vehicle?: UserProfile["vehicle"];
   location?: LatLng | null;
+  average_rating?: number | null;
+  rating_count?: number;
+};
+
+export type RideRating = {
+  id: string;
+  ride_id: string;
+  score: number;
+  comment: string;
+  from_user_id: string;
+  from_role: "rider" | "driver" | string;
+  to_user_id: string;
+  to_role: "rider" | "driver" | string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RideIssueReport = {
+  id: string;
+  ride_id: string;
+  category: string;
+  description: string;
+  status: "open" | "closed" | string;
+  reporter_user_id: string;
+  reporter_role: "rider" | "driver" | string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MockPayment = {
+  id: string;
+  ride_id: string;
+  amount: number;
+  currency: string;
+  method: string;
+  status: "authorized" | "paid" | "voided" | "refunded" | string;
+  authorization_code?: string;
+  authorized_at?: string;
+  captured_at?: string | null;
+  voided_at?: string | null;
+  refunded_at?: string | null;
+  void_reason?: string;
+  receipt_number?: string | null;
+  fare_breakdown?: FareBreakdown | null;
+  refund?: {
+    id: string;
+    ride_id: string;
+    payment_id: string;
+    amount: number;
+    currency: string;
+    status: string;
+    reason: string;
+    created_at: string;
+  };
 };
 
 export type Ride = {
@@ -110,6 +190,12 @@ export type Ride = {
   rider_id: string;
   pickup: LatLng;
   destination: LatLng;
+  distance_km?: number;
+  duration_min?: number;
+  currency?: string;
+  fare?: number;
+  fare_breakdown?: FareBreakdown;
+  payment?: MockPayment;
   status: RideStatus;
   driver_id: string | null;
   driver?: DriverSummary | null;
@@ -126,12 +212,17 @@ export type Ride = {
   completed_at?: string;
   cancelled_at?: string;
   no_drivers_available_at?: string;
+  ratings?: Record<string, RideRating>;
+  issue_reports?: RideIssueReport[];
+  share_token?: string;
 };
+
 
 export type RideSocketMessage =
   | { type: "ride_update"; ride: Ride }
   | { type: "driver_location_update"; location: LatLng; ride?: Ride }
   | { type: "rider_location_update"; location: LatLng; ride?: Ride }
+  | { type: "notification"; notification: NotificationItem; unread_count: number }
   | { type: "pong"; sent_at?: string };
 
 export type DriverSocketMessage =
@@ -140,4 +231,9 @@ export type DriverSocketMessage =
   | { type: "ride_cleared"; ride_id: string }
   | { type: "availability_update"; availability: UserProfile["availability"]; online: boolean }
   | { type: "driver_location_update"; location: LatLng; ride?: Ride }
+  | { type: "notification"; notification: NotificationItem; unread_count: number }
+  | { type: "pong"; sent_at?: string };
+
+export type ShareSocketMessage =
+  | { type: "share_update"; ride: SharedRide }
   | { type: "pong"; sent_at?: string };
