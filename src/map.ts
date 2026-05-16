@@ -172,6 +172,36 @@ export function clearRealtimeMarkers(): void {
   if (riderMarker) { map.removeLayer(riderMarker); riderMarker = null; }
 }
 
+export function clearAdminMapLayers(): void {
+  if (!map) {
+    adminLayers = [];
+    return;
+  }
+  for (const layer of adminLayers) {
+    map.removeLayer(layer);
+  }
+  adminLayers = [];
+}
 
+
+
+function colorForRideStatus(status: string): string {
+  if (status === "in_progress") return "#1f9d61";
+  if (status === "accepted" || status === "arrived") return "#2f67f6";
+  if (status === "no_drivers_available") return "#d94848";
+  return "#f1a51d";
+}
+
+function shortRideId(id: string): string {
+  return `#${id.slice(0, 8)}`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 export function getMap(): Map | null { return map; }
