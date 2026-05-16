@@ -4,8 +4,11 @@ const allScreenIds = [
   "screen-rider-signup",
   "screen-driver-login",
   "screen-driver-signup",
+  "screen-admin-login",
   "screen-rider-home",
   "screen-driver-home",
+  "screen-admin-home",
+  "screen-trip-share",
 ];
 
 type LucideWindow = Window & {
