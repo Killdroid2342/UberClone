@@ -150,6 +150,8 @@ function setEstimateIdle(): void {
   setText("ride-eta", "Choose route");
   setText("ride-distance", "--");
   setText("ride-fare", "--");
+  setText("ride-surge", "Normal");
+  renderFareBreakdown(null);
 }
 
 function setEstimateLoading(): void {
@@ -157,6 +159,8 @@ function setEstimateLoading(): void {
   setText("ride-eta", "Estimating...");
   setText("ride-distance", "--");
   setText("ride-fare", "--");
+  setText("ride-surge", "--");
+  renderFareBreakdown(null);
 }
 
 function setEstimateError(): void {
@@ -165,12 +169,16 @@ function setEstimateError(): void {
   setText("ride-eta", "Unavailable");
   setText("ride-distance", "--");
   setText("ride-fare", "--");
+  setText("ride-surge", "Unavailable");
+  renderFareBreakdown(null);
 }
 
 function setEstimateValues(estimate: RouteEstimate): void {
   setText("ride-eta", formatDuration(estimate.duration_min));
   setText("ride-distance", formatDistance(estimate.distance_km));
-  setText("ride-fare", formatFare(estimate.fare));
+  setText("ride-fare", formatFare(estimate.fare, estimate.currency));
+  setText("ride-surge", surgeLabel(estimate.fare_breakdown));
+  renderFareBreakdown(estimate.fare_breakdown);
   renderDirections(
     "rider",
     estimate.steps,
@@ -197,6 +205,46 @@ function formatDistance(distanceKm: number): string {
   return `${miles < 10 ? miles.toFixed(1) : Math.round(miles)} mi`;
 }
 
-function formatFare(fare: number): string {
-  return `$${fare.toFixed(2)}`;
+function formatFare(fare: number, currency = "USD"): string {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency,
+  }).format(fare);
+}
+
+function surgeLabel(breakdown: RouteEstimate["fare_breakdown"]): string {
+  if (!breakdown || breakdown.surge_multiplier <= 1) return "Normal";
+  return `${breakdown.surge_multiplier.toFixed(2)}x`;
+}
+
+function renderFareBreakdown(breakdown: RouteEstimate["fare_breakdown"] | null): void {
+  const panel = document.getElementById("fare-breakdown-panel");
+  if (!panel) return;
+
+  if (!breakdown) {
+    panel.classList.add("is-hidden");
+    setText("fare-base", "--");
+    setText("fare-distance-charge", "--");
+    setText("fare-time-charge", "--");
+    setText("fare-surge-charge", "--");
+    setText("fare-minimum-adjustment", "--");
+    return;
+  }
+
+  panel.classList.remove("is-hidden");
+  setText("fare-base", formatFare(breakdown.base_fare, breakdown.currency));
+  setText("fare-distance-charge", formatFare(breakdown.distance_charge, breakdown.currency));
+  setText("fare-time-charge", formatFare(breakdown.time_charge, breakdown.currency));
+  setText(
+    "fare-surge-charge",
+    breakdown.surge_multiplier > 1
+      ? `${formatFare(breakdown.surge_charge, breakdown.currency)} (${breakdown.surge_multiplier.toFixed(2)}x)`
+      : "None"
+  );
+  setText(
+    "fare-minimum-adjustment",
+    breakdown.minimum_adjustment > 0
+      ? formatFare(breakdown.minimum_adjustment, breakdown.currency)
+      : "None"
+  );
 }
