@@ -256,6 +256,82 @@ export async function markNotificationRead(notificationId: string): Promise<Noti
   return res.json();
 }
 
+export async function markAllNotificationsRead(): Promise<NotificationInbox> {
+  const res = await fetch(`${API_URL}/notifications/read-all`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) throw new Error("Failed to update notifications");
+  return res.json();
+}
+
+export async function createRideShare(rideId: string): Promise<TripShare> {
+  const res = await fetch(`${API_URL}/rides/${rideId}/share`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to create trip share");
+  }
+
+  return res.json();
+}
+
+export async function getSharedRide(token: string): Promise<TripShare> {
+  const res = await fetch(`${API_URL}/shares/${encodeURIComponent(token)}`);
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Shared trip not found");
+  }
+
+  return res.json();
+}
+
+export async function getAdminDashboard(): Promise<AdminDashboard> {
+  const res = await fetch(`${API_URL}/admin/dashboard`, {
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) throw new Error("Failed to load admin dashboard");
+  return res.json();
+}
+
+export async function updateAdminUserStatus(
+  role: "rider" | "driver",
+  userId: string,
+  status: "active" | "suspended"
+): Promise<AdminUserSummary> {
+  const res = await fetch(`${API_URL}/admin/users/${role}/${encodeURIComponent(userId)}/status`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ status }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to update user status");
+  }
+
+  return res.json();
+}
+
+export async function forceAdminDriverOffline(driverId: string): Promise<AdminDriverSummary> {
+  const res = await fetch(`${API_URL}/admin/drivers/${encodeURIComponent(driverId)}/force-offline`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to force driver offline");
+  }
+
+  return res.json();
+}
 
 export async function acceptRide(rideId: string): Promise<Ride> {
   const res = await fetch(`${API_URL}/rides/${rideId}/accept`, {
