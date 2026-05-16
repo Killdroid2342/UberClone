@@ -183,7 +183,80 @@ export function clearAdminMapLayers(): void {
   adminLayers = [];
 }
 
+export function renderAdminActiveRidesMap(
+  activeRides: AdminRideSummary[],
+  drivers: AdminDriverSummary[]
+): void {
+  if (!map) return;
+  clearAdminMapLayers();
 
+  const bounds: [number, number][] = [];
+
+  for (const ride of activeRides) {
+    const color = colorForRideStatus(ride.status);
+    addAdminMarker(ride.pickup, adminPickupIcon, adminRidePopup(ride, "Pickup"), bounds);
+    addAdminMarker(ride.destination, adminDestinationIcon, adminRidePopup(ride, "Destination"), bounds);
+    addAdminMarker(ride.rider_location || null, adminRiderIcon, adminRidePopup(ride, "Rider live"), bounds);
+    addAdminMarker(ride.driver_location || null, adminDriverIcon, adminRidePopup(ride, "Driver live"), bounds);
+
+    const route = L.polyline(
+      [
+        [ride.pickup.lat, ride.pickup.lng],
+        [ride.destination.lat, ride.destination.lng],
+      ],
+      {
+        color,
+        weight: 4,
+        opacity: 0.76,
+        dashArray: ride.status === "in_progress" ? undefined : "8, 10",
+      }
+    ).addTo(map);
+    route.bindPopup(adminRidePopup(ride, "Route"));
+    adminLayers.push(route);
+  }
+
+  for (const driver of drivers) {
+    if (!driver.location || driver.current_ride_id || driver.availability !== "available") continue;
+    addAdminMarker(
+      driver.location,
+      adminAvailableDriverIcon,
+      `<strong>${escapeHtml(driver.name)}</strong><br/>Available driver`,
+      bounds
+    );
+  }
+
+  if (bounds.length > 0) {
+    map.fitBounds(L.latLngBounds(bounds), { padding: [52, 52], maxZoom: 14 });
+  } else {
+    map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+  }
+
+  window.setTimeout(() => map?.invalidateSize(), 0);
+}
+
+function addAdminMarker(
+  point: LatLng | null,
+  icon: DivIcon,
+  popup: string,
+  bounds: [number, number][]
+): void {
+  if (!map || !point) return;
+  const latLng: [number, number] = [point.lat, point.lng];
+  const marker = L.marker(latLng, { icon }).addTo(map);
+  marker.bindPopup(popup);
+  adminLayers.push(marker);
+  bounds.push(latLng);
+}
+
+function adminRidePopup(ride: AdminRideSummary, label: string): string {
+  const rider = ride.rider?.name || "Unknown rider";
+  const driver = ride.driver?.name || "Unassigned";
+  return [
+    `<strong>${escapeHtml(label)} ${escapeHtml(shortRideId(ride.id))}</strong>`,
+    `${escapeHtml(rider)} to ${escapeHtml(driver)}`,
+    escapeHtml(ride.status.replace(/_/g, " ")),
+  ].join("<br/>");
+}
 
 function colorForRideStatus(status: string): string {
   if (status === "in_progress") return "#1f9d61";
