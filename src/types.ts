@@ -261,6 +261,65 @@ export type TripShare = {
   ride: SharedRide;
 };
 
+export type AdminRideSummary = {
+  id: string;
+  status: RideStatus;
+  rider: Pick<UserProfile, "id" | "name" | "email" | "phone" | "role"> | null;
+  driver: Pick<UserProfile, "id" | "name" | "email" | "phone" | "role"> | null;
+  pickup: LatLng;
+  destination: LatLng;
+  driver_location?: LatLng | null;
+  rider_location?: LatLng | null;
+  distance_km?: number;
+  duration_min?: number;
+  fare?: number;
+  currency: string;
+  payment_status?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminDriverSummary = {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  account_status?: "active" | "suspended" | string;
+  availability?: UserProfile["availability"];
+  current_ride_id?: string | null;
+  location?: LatLng | null;
+  vehicle?: UserProfile["vehicle"];
+  onboarding_status?: string;
+  acceptance_rate: number;
+  today_net: number;
+  completed_rides: number;
+  average_rating?: number | null;
+  rating_count?: number;
+  created_at?: string;
+};
+
+export type AdminUserSummary = {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: "rider" | "driver";
+  account_status: "active" | "suspended" | string;
+  average_rating?: number | null;
+  rating_count?: number;
+  created_at?: string;
+  total_rides?: number;
+  completed_rides?: number;
+  availability?: UserProfile["availability"];
+  current_ride_id?: string | null;
+  vehicle?: UserProfile["vehicle"];
+  location?: LatLng | null;
+  onboarding_status?: string;
+  acceptance_rate?: number;
+  today_net?: number;
+};
+
+
 
 export type RideSocketMessage =
   | { type: "ride_update"; ride: Ride }
