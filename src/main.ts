@@ -4,6 +4,7 @@ import {
   loginRider,
   signupDriver,
   loginDriver,
+  loginAdmin,
   getMe,
   setToken,
   getToken,
@@ -16,12 +17,36 @@ import {
   updateRiderLocation,
   getRouteEstimate,
   getDriverRideRequest,
+  getRideHistory,
+  getDriverEarnings,
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  createRideShare,
+  getSharedRide,
+  getAdminDashboard,
+  updateAdminUserStatus,
+  forceAdminDriverOffline,
   acceptRide,
   rejectRide,
   updateRideStatus,
+  simulateRefund,
   cancelRide,
+  rateRide,
+  reportRideIssue,
+  connectShareSocket,
 } from "./api.js";
-import { clearRealtimeMarkers, clearRoute, initMap, setDriverMarker, setRiderMarker, setRoute } from "./map.js";
+import {
+  clearAdminMapLayers,
+  clearRealtimeMarkers,
+  clearRoute,
+  initAdminMap,
+  initMap,
+  renderAdminActiveRidesMap,
+  setDriverMarker,
+  setRiderMarker,
+  setRoute,
+} from "./map.js";
 import { clearDirections, formatRouteMeta, renderDirections } from "./directions.js";
 import { initLocationSearch, getSelectedPickup, getSelectedDest } from "./location.js";
 import {
@@ -32,13 +57,32 @@ import {
   REROUTE_INTERVAL_MS,
 } from "./config.js";
 import type { RealtimeSocket } from "./socket.js";
-import type { LatLng, Ride, RideStatus, RouteEstimate, UserProfile } from "./types.js";
+import type {
+  AdminDashboard,
+  AdminUserSummary,
+  DriverEarnings,
+  FareBreakdown,
+  LatLng,
+  NotificationInbox,
+  NotificationItem,
+  Ride,
+  RideStatus,
+  RouteEstimate,
+  SharedRide,
+  TripShare,
+  UserProfile,
+} from "./types.js";
 
 let currentUser: UserProfile | null = null;
 let currentRiderRideSocket: RealtimeSocket | null = null;
 let currentDriverSocket: RealtimeSocket | null = null;
+let currentShareSocket: RealtimeSocket | null = null;
 let activeDriverRide: Ride | null = null;
+let activeRiderRide: Ride | null = null;
 let activeRiderRideId: string | null = null;
+let activeShareRideId: string | null = null;
+let activeShareUrl: string | null = null;
+let activeShareToken: string | null = null;
 let driverLocationWatchId: number | null = null;
 let riderLocationWatchId: number | null = null;
 let lastDriverLocationSentAt = 0;
@@ -47,8 +91,16 @@ let lastDriverLocation: LatLng | null = null;
 let lastRiderLocation: LatLng | null = null;
 let isDriverOnline = false;
 let driverAvailabilityLoading = false;
+let activeRefundRideId: string | null = null;
+let activeRiderRatingRideId: string | null = null;
+let activeDriverRatingRideId: string | null = null;
+let activeRiderIssueRideId: string | null = null;
+let activeDriverIssueRideId: string | null = null;
+let riderSelectedRating = 5;
+let driverSelectedRating = 5;
 let riderRouteState = createLiveRouteState();
 let driverRouteState = createLiveRouteState();
+let adminDashboardRefreshTimer: number | null = null;
 
 type LiveRouteState = {
   rideId: string | null;
@@ -67,6 +119,12 @@ type LiveRouteTarget = {
 
 document.addEventListener("DOMContentLoaded", async () => {
   bindAll();
+  const shareToken = new URLSearchParams(window.location.search).get("share");
+  if (shareToken) {
+    void showSharedTrip(shareToken);
+    return;
+  }
+
   const token = getToken();
   if (token) {
     try {
@@ -74,8 +132,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       currentUser = user;
       if (user.role === "rider") {
         showRiderHome();
-      } else {
+      } else if (user.role === "driver") {
         showDriverHome(user);
+      } else {
+        showAdminHome(user);
       }
       showToast(`Welcome back, ${user.name}!`, "success");
       return;
@@ -90,38 +150,71 @@ document.addEventListener("DOMContentLoaded", async () => {
 function bindAll(): void {
   bindClick("btn-role-rider", () => showScreen("screen-rider-login"));
   bindClick("btn-role-driver", () => showScreen("screen-driver-login"));
+  bindClick("btn-role-admin", () => showScreen("screen-admin-login"));
   bindClick("link-rider-signup", () => showScreen("screen-rider-signup"));
   bindClick("link-rider-login", () => showScreen("screen-rider-login"));
   bindClick("link-driver-signup", () => showScreen("screen-driver-signup"));
   bindClick("link-driver-login", () => showScreen("screen-driver-login"));
   bindClick("link-back-welcome-r", () => showScreen("screen-welcome"));
   bindClick("link-back-welcome-d", () => showScreen("screen-welcome"));
+  bindClick("link-back-welcome-a", () => showScreen("screen-welcome"));
   bindClick("link-back-welcome-rs", () => showScreen("screen-welcome"));
   bindClick("link-back-welcome-ds", () => showScreen("screen-welcome"));
   bindClick("btn-logout-rider", () => { logout(); });
   bindClick("btn-logout-driver", () => { logout(); });
+  bindClick("btn-logout-admin", () => { logout(); });
   bindRiderLogin();
   bindRiderSignup();
   bindDriverLogin();
   bindDriverSignup();
+  bindAdminLogin();
   bindConfirmRide();
   bindRiderCancellation();
+  bindRefundSimulation();
+  bindTripSharing();
+  bindRatingControls("rider");
+  bindRatingControls("driver");
+  bindRatingSubmission("rider");
+  bindRatingSubmission("driver");
+  bindIssueReport("rider");
+  bindIssueReport("driver");
   bindDriverRideActions();
   bindDriverAvailabilityToggle();
+  bindClick("btn-refresh-rider-history", () => { void refreshRideHistory(); });
+  bindClick("btn-refresh-driver-earnings", () => { void refreshDriverEarnings(); });
+  bindClick("btn-refresh-rider-notifications", () => { void refreshNotifications("rider"); });
+  bindClick("btn-refresh-driver-notifications", () => { void refreshNotifications("driver"); });
+  bindClick("btn-read-rider-notifications", () => { void readAllNotifications("rider"); });
+  bindClick("btn-read-driver-notifications", () => { void readAllNotifications("driver"); });
+  bindClick("btn-refresh-admin-dashboard", () => { void refreshAdminDashboard(); });
+  bindClick("btn-refresh-share-trip", () => { if (activeShareToken) void loadSharedTrip(activeShareToken); });
+  bindClick("btn-close-share-view", () => {
+    currentShareSocket?.close();
+    currentShareSocket = null;
+    activeShareToken = null;
+    window.history.replaceState({}, "", window.location.pathname);
+    showScreen("screen-welcome");
+  });
 }
 
 function showRiderHome(): void {
+  stopAdminDashboardRefresh();
   stopRiderLocationTracking();
   showScreen("screen-rider-home");
   setTimeout(() => {
     initMap("map");
     initLocationSearch();
     resetRiderRideStatus();
+    renderPaymentPanel(null);
+    renderTripSharePanel(null);
     clearRealtimeMarkers();
+    void refreshRideHistory();
+    void refreshNotifications("rider");
   }, 100);
 }
 
 function showDriverHome(user: UserProfile): void {
+  stopAdminDashboardRefresh();
   showScreen("screen-driver-home");
   isDriverOnline = user.availability !== "offline";
   renderDriverAvailability(user.availability);
@@ -133,24 +226,67 @@ function showDriverHome(user: UserProfile): void {
     stopDriverLocationTracking();
   }
   void refreshDriverRideRequest();
+  void refreshDriverEarnings();
+  void refreshNotifications("driver");
+}
+
+function showAdminHome(user: UserProfile): void {
+  stopAdminDashboardRefresh();
+  currentRiderRideSocket?.close();
+  currentDriverSocket?.close();
+  currentShareSocket?.close();
+  currentRiderRideSocket = null;
+  currentDriverSocket = null;
+  currentShareSocket = null;
+  stopDriverLocationTracking();
+  stopRiderLocationTracking();
+  showScreen("screen-admin-home");
+  setText("admin-user-name", user.name);
+  setTimeout(() => {
+    initAdminMap("admin-active-rides-map");
+    void refreshAdminDashboard();
+    adminDashboardRefreshTimer = window.setInterval(() => {
+      void refreshAdminDashboard();
+    }, 15000);
+  }, 100);
+}
+
+function stopAdminDashboardRefresh(): void {
+  if (adminDashboardRefreshTimer) {
+    window.clearInterval(adminDashboardRefreshTimer);
+    adminDashboardRefreshTimer = null;
+  }
 }
 
 function logout(): void {
+  stopAdminDashboardRefresh();
   if (currentUser?.role === "driver" && isDriverOnline) {
     void updateDriverAvailability(false).catch(() => {});
   }
   currentRiderRideSocket?.close();
   currentDriverSocket?.close();
+  currentShareSocket?.close();
   stopDriverLocationTracking();
   stopRiderLocationTracking();
   currentRiderRideSocket = null;
   currentDriverSocket = null;
+  currentShareSocket = null;
   activeDriverRide = null;
+  activeRiderRide = null;
   activeRiderRideId = null;
+  activeShareRideId = null;
+  activeShareUrl = null;
+  activeShareToken = null;
+  activeRefundRideId = null;
+  activeRiderRatingRideId = null;
+  activeDriverRatingRideId = null;
+  activeRiderIssueRideId = null;
+  activeDriverIssueRideId = null;
   isDriverOnline = false;
   clearDirections("rider");
   clearDirections("driver");
   clearRoute();
+  clearAdminMapLayers();
   currentUser = null;
   clearToken();
   showScreen("screen-welcome");
@@ -235,6 +371,32 @@ function bindDriverLogin(): void {
   });
 }
 
+function bindAdminLogin(): void {
+  const form = document.getElementById("form-admin-login") as HTMLFormElement;
+  if (!form) return;
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector("button[type=submit]") as HTMLButtonElement;
+    const data = getFormData("form-admin-login");
+
+    if (!validateEmail(data.email)) { showToast("Enter a valid email", "error"); return; }
+    if (!data.password) { showToast("Password is required", "error"); return; }
+
+    setLoading(btn, true);
+    try {
+      const res = await loginAdmin({ email: data.email, password: data.password });
+      setToken(res.token);
+      currentUser = res.user;
+      showToast(`Welcome, ${res.user.name}!`, "success");
+      showAdminHome(res.user);
+    } catch (err: any) {
+      showToast(err.message || "Login failed", "error");
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+}
+
 function bindDriverSignup(): void {
   const btnNext1 = document.getElementById("btn-driver-step-2") as HTMLButtonElement;
   const btnNext2 = document.getElementById("btn-driver-step-3") as HTMLButtonElement;
@@ -300,11 +462,15 @@ function bindDriverSignup(): void {
 
 function connectRiderRideUpdates(ride: Ride): void {
   currentRiderRideSocket?.close();
+  activeRiderRide = ride;
   activeRiderRideId = ride.id;
   currentRiderRideSocket = connectRideSocket(ride.id, (data) => {
     if (data.type === "ride_update") {
+      activeRiderRide = data.ride;
       renderRideLocations(data.ride);
       renderRiderRideStatus(data.ride);
+      renderPaymentPanel(data.ride);
+      renderTripSharePanel(data.ride);
       void refreshRiderRoute(data.ride);
       if (data.ride.status === "no_drivers_available") {
         stopRiderLocationTracking(false);
@@ -315,14 +481,20 @@ function connectRiderRideUpdates(ride: Ride): void {
       if (isTerminalRideStatus(data.ride.status)) {
         currentRiderRideSocket?.close();
         currentRiderRideSocket = null;
+        activeRiderRide = null;
         clearRealtimeMarkers();
         clearDirections("rider");
         clearRoute();
+        void refreshRideHistory();
       }
+    }
+    if (data.type === "notification") {
+      handleRealtimeNotification(data.notification, "rider");
     }
   });
   startRiderLocationTracking(ride.id);
   void refreshRiderRoute(ride, true);
+  renderTripSharePanel(ride);
 }
 
 function connectDriverUpdates(driverId: string): void {
@@ -331,6 +503,9 @@ function connectDriverUpdates(driverId: string): void {
     if (data.type === "ride_request" || data.type === "ride_update") {
       renderDriverRequest(data.ride);
       void refreshDriverRoute(data.ride, data.type === "ride_request");
+      if (data.ride?.status === "completed") {
+        void refreshDriverEarnings();
+      }
       if (data.type === "ride_request" && data.ride?.status === "pending_driver") {
         showToast("New ride request", "info");
       }
@@ -358,7 +533,96 @@ function connectDriverUpdates(driverId: string): void {
       renderDriverRequest(null);
       clearDirections("driver");
     }
+    if (data.type === "notification") {
+      handleRealtimeNotification(data.notification, "driver");
+    }
   });
+}
+
+async function showSharedTrip(token: string): Promise<void> {
+  currentRiderRideSocket?.close();
+  currentDriverSocket?.close();
+  currentShareSocket?.close();
+  currentRiderRideSocket = null;
+  currentDriverSocket = null;
+  currentShareSocket = null;
+  activeShareToken = token;
+  showScreen("screen-trip-share");
+  await loadSharedTrip(token);
+
+  currentShareSocket = connectShareSocket(token, (data) => {
+    if (data.type === "share_update") {
+      renderSharedTrip(data.ride);
+    }
+  }, { reconnect: true });
+}
+
+async function loadSharedTrip(token: string): Promise<void> {
+  try {
+    const share = await getSharedRide(token);
+    renderSharedTrip(share.ride);
+  } catch (err: any) {
+    renderSharedTripError(err.message || "Shared trip not found");
+  }
+}
+
+function renderSharedTrip(ride: SharedRide): void {
+  setText("share-trip-status", rideStatusLabel(ride.status));
+  setText("share-trip-title", sharedTripTitle(ride));
+  setText("share-trip-body", sharedTripBody(ride));
+  setText("share-trip-updated", `Updated ${formatDateTime(ride.updated_at)}`);
+  setText("share-trip-pickup", formatPoint(ride.pickup));
+  setText("share-trip-destination", formatPoint(ride.destination));
+  setText("share-trip-driver", ride.driver?.name || "Driver pending");
+  setText("share-trip-vehicle", sharedVehicleLabel(ride));
+  setText("share-trip-distance", ride.distance_km ? formatDistanceKm(ride.distance_km) : "--");
+  setText("share-trip-rider-location", ride.rider_location ? formatPoint(ride.rider_location) : "--");
+  setText("share-trip-driver-location", ride.driver_location ? formatPoint(ride.driver_location) : "--");
+
+  const route = document.getElementById("share-route-visual");
+  if (route) {
+    route.className = `share-route-visual share-route-${ride.status}`;
+  }
+}
+
+function renderSharedTripError(message: string): void {
+  setText("share-trip-status", "Unavailable");
+  setText("share-trip-title", "Shared trip unavailable");
+  setText("share-trip-body", message);
+  setText("share-trip-updated", "");
+  setText("share-trip-pickup", "--");
+  setText("share-trip-destination", "--");
+  setText("share-trip-driver", "--");
+  setText("share-trip-vehicle", "--");
+  setText("share-trip-distance", "--");
+  setText("share-trip-rider-location", "--");
+  setText("share-trip-driver-location", "--");
+}
+
+function sharedTripTitle(ride: SharedRide): string {
+  if (ride.status === "pending_driver") return "Driver reviewing request";
+  if (ride.status === "accepted") return "Driver is on the way";
+  if (ride.status === "arrived") return "Driver is at pickup";
+  if (ride.status === "in_progress") return "Trip is underway";
+  if (ride.status === "completed") return "Trip complete";
+  if (ride.status === "cancelled") return "Trip cancelled";
+  if (ride.status === "no_drivers_available") return "No drivers available";
+  return "Finding a driver";
+}
+
+function sharedTripBody(ride: SharedRide): string {
+  if (ride.driver?.name && ["accepted", "arrived", "in_progress"].includes(ride.status)) {
+    return `${ride.driver.name} is handling this trip.`;
+  }
+  if (ride.status === "completed") return "The rider has reached the destination.";
+  if (ride.status === "cancelled") return "This shared trip is no longer active.";
+  return "Live status will update as the ride progresses.";
+}
+
+function sharedVehicleLabel(ride: SharedRide): string {
+  const vehicle = ride.driver?.vehicle;
+  if (!vehicle) return "Vehicle pending";
+  return `${vehicle.color} ${vehicle.make} ${vehicle.model} - ${vehicle.plate}`;
 }
 
 function startDriverLocationTracking(): void {
@@ -706,10 +970,13 @@ function renderRiderRideStatus(ride: Ride | null): void {
   if (!card || !title || !body || !meta || !btn || !cancelBtn) return;
 
   if (!ride) {
+    activeRiderRide = null;
     card.classList.add("is-hidden");
     cancelBtn.classList.add("is-hidden");
     btn.disabled = false;
     btn.innerHTML = `<span>Confirm pickup</span><i data-lucide="navigation"></i>`;
+    renderRiderFeedbackPanels(null);
+    renderTripSharePanel(null);
     clearRealtimeMarkers();
     clearDirections("rider");
     refreshDynamicIcons();
@@ -731,9 +998,10 @@ function renderRiderRideStatus(ride: Ride | null): void {
     btn.innerHTML = `<span>Waiting for driver</span><i data-lucide="loader-circle"></i>`;
   } else if (ride.status === "accepted") {
     const vehicle = ride.driver?.vehicle;
+    const driverRating = formatRatingSummary(ride.driver?.average_rating, ride.driver?.rating_count);
     title.textContent = "Ride accepted";
     body.textContent = ride.driver
-      ? `${ride.driver.name} is on the way${vehicle ? ` in a ${vehicle.color} ${vehicle.make} ${vehicle.model}` : ""}.`
+      ? `${ride.driver.name}${driverRating ? ` (${driverRating})` : ""} is on the way${vehicle ? ` in a ${vehicle.color} ${vehicle.make} ${vehicle.model}` : ""}.`
       : "Your driver is on the way.";
     meta.textContent = ride.driver_location
       ? `${formatDistanceKm(distanceKm(ride.driver_location, ride.pickup))} from pickup`
@@ -784,12 +1052,15 @@ function renderRiderRideStatus(ride: Ride | null): void {
     btn.innerHTML = `<span>Searching</span><i data-lucide="loader-circle"></i>`;
   }
 
+  renderRiderFeedbackPanels(ride);
   refreshDynamicIcons();
 }
 
 function resetRiderRideStatus(): void {
   renderRiderRideStatus(null);
 }
+
+
 
 function renderDriverRequest(ride: Ride | null): void {
   const card = document.getElementById("driver-request-card");
@@ -799,6 +1070,8 @@ function renderDriverRequest(ride: Ride | null): void {
   const pickup = document.getElementById("driver-request-pickup");
   const destination = document.getElementById("driver-request-destination");
   const distance = document.getElementById("driver-request-distance");
+  const fare = document.getElementById("driver-request-fare");
+  const surge = document.getElementById("driver-request-surge");
   const riderLocation = document.getElementById("driver-request-rider-location");
   const actions = document.getElementById("driver-request-actions");
   const rejectBtn = document.getElementById("btn-reject-ride") as HTMLButtonElement;
@@ -808,7 +1081,7 @@ function renderDriverRequest(ride: Ride | null): void {
   const completeBtn = document.getElementById("btn-complete-ride") as HTMLButtonElement;
   const cancelBtn = document.getElementById("btn-cancel-driver-ride") as HTMLButtonElement;
 
-  if (!card || !status || !title || !body || !pickup || !destination || !distance || !riderLocation || !actions) return;
+  if (!card || !status || !title || !body || !pickup || !destination || !distance || !fare || !surge || !riderLocation || !actions) return;
 
   const actionsEl = actions;
   const actionButtons = [rejectBtn, acceptBtn, arrivedBtn, startBtn, completeBtn, cancelBtn]
@@ -833,7 +1106,10 @@ function renderDriverRequest(ride: Ride | null): void {
     pickup.textContent = "--";
     destination.textContent = "--";
     distance.textContent = "--";
+    fare.textContent = "--";
+    surge.textContent = "--";
     riderLocation.textContent = "--";
+    renderDriverFeedbackPanels(null);
     clearDirections("driver");
     showOnlyActions();
     return;
@@ -842,6 +1118,8 @@ function renderDriverRequest(ride: Ride | null): void {
   pickup.textContent = formatPoint(ride.pickup);
   destination.textContent = formatPoint(ride.destination);
   distance.textContent = ride.driver_distance_km === null ? "--" : formatDistanceKm(ride.driver_distance_km);
+  fare.textContent = formatCurrency(ride.fare, ride.currency);
+  surge.textContent = fareSurgeLabel(ride.fare_breakdown);
   riderLocation.textContent = ride.rider_location ? formatPoint(ride.rider_location) : "--";
 
   if (ride.status === "accepted") {
@@ -883,6 +1161,7 @@ function renderDriverRequest(ride: Ride | null): void {
     showOnlyActions();
   }
 
+  renderDriverFeedbackPanels(ride);
   refreshDynamicIcons();
 }
 
@@ -902,6 +1181,7 @@ function bindDriverRideActions(): void {
         const ride = await acceptRide(activeDriverRide.id);
         renderDriverRequest(ride);
         void refreshDriverRoute(ride, true);
+        void refreshDriverEarnings();
         showToast("Ride accepted", "success");
       } catch (err: any) {
         showToast(err.message || "Could not accept ride", "error");
@@ -919,6 +1199,7 @@ function bindDriverRideActions(): void {
         await rejectRide(activeDriverRide.id);
         renderDriverRequest(null);
         clearDirections("driver");
+        void refreshDriverEarnings();
         showToast("Ride rejected", "info");
       } catch (err: any) {
         showToast(err.message || "Could not reject ride", "error");
@@ -944,17 +1225,41 @@ function bindRiderCancellation(): void {
     try {
       const ride = await cancelRide(activeRiderRideId);
       renderRiderRideStatus(ride);
+      renderPaymentPanel(ride);
       stopRiderLocationTracking();
       currentRiderRideSocket?.close();
       currentRiderRideSocket = null;
       clearRealtimeMarkers();
       clearDirections("rider");
       clearRoute();
+      void refreshRideHistory();
       showToast("Ride cancelled", "info");
     } catch (err: any) {
       showToast(err.message || "Could not cancel ride", "error");
     } finally {
       setLoading(button, false);
+    }
+  });
+}
+
+function bindRefundSimulation(): void {
+  const button = document.getElementById("payment-refund-btn") as HTMLButtonElement;
+  if (!button) return;
+
+  button.addEventListener("click", async () => {
+    if (!activeRefundRideId) return;
+    setLoading(button, true);
+    try {
+      const ride = await simulateRefund(activeRefundRideId);
+      renderRiderRideStatus(ride);
+      renderPaymentPanel(ride);
+      void refreshRideHistory();
+      showToast("Refund simulated", "success");
+    } catch (err: any) {
+      showToast(err.message || "Could not simulate refund", "error");
+    } finally {
+      setLoading(button, false);
+      refreshDynamicIcons();
     }
   });
 }
@@ -969,6 +1274,7 @@ function bindDriverCancelAction(button: HTMLButtonElement | null): void {
       const ride = await cancelRide(activeDriverRide.id);
       renderDriverRequest(ride);
       clearDirections("driver");
+      void refreshDriverEarnings();
       showToast("Ride cancelled", "info");
     } catch (err: any) {
       showToast(err.message || "Could not cancel ride", "error");
@@ -991,6 +1297,9 @@ function bindDriverProgressAction(
       const ride = await updateRideStatus(activeDriverRide.id, status);
       renderDriverRequest(ride);
       void refreshDriverRoute(ride, true);
+      if (ride.status === "completed") {
+        void refreshDriverEarnings();
+      }
       showToast(successMessage, "success");
     } catch (err: any) {
       showToast(err.message || "Could not update ride", "error");
@@ -1120,6 +1429,92 @@ function formatPoint(point: LatLng): string {
   return `${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}`;
 }
 
+function formatCurrency(amount: number | null | undefined, currency = "USD"): string {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency,
+  }).format(amount ?? 0);
+}
+
+function formatRatingSummary(rating?: number | null, count?: number): string {
+  if (!rating || !count) return "";
+  return `${rating.toFixed(1)} rating`;
+}
+
+function fareSurgeLabel(breakdown?: FareBreakdown): string {
+  if (!breakdown || breakdown.surge_multiplier <= 1) return "Normal";
+  return `${breakdown.surge_multiplier.toFixed(2)}x`;
+}
+
+function formatPercent(rate: number): string {
+  return new Intl.NumberFormat(undefined, {
+    style: "percent",
+    maximumFractionDigits: 0,
+  }).format(rate);
+}
+
+function formatAnalyticsPercent(value: number): string {
+  const digits = Number.isInteger(value) ? 0 : 1;
+  return `${value.toFixed(digits)}%`;
+}
+
+function roleLabel(role: string): string {
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function adminUserDetail(user: AdminUserSummary, currency: string): string {
+  if (user.role === "driver") {
+    const vehicle = user.vehicle
+      ? `${user.vehicle.color} ${user.vehicle.make} ${user.vehicle.model}`
+      : "No vehicle";
+    const availability = availabilityLabel(user.availability);
+    return `${availability} - ${vehicle} - ${formatCurrency(user.today_net, currency)} today - ${user.completed_rides ?? 0} completed`;
+  }
+
+  return `${user.total_rides ?? 0} rides - ${user.completed_rides ?? 0} completed`;
+}
+
+function adminStatusColor(status: string): string {
+  if (status === "completed") return "#1f9d61";
+  if (status === "cancelled" || status === "no_drivers_available") return "#d94848";
+  if (status === "in_progress") return "#2f67f6";
+  if (status === "accepted" || status === "arrived") return "#2457c5";
+  return "#f1a51d";
+}
+
+function formatDateTime(value?: string | null): string {
+  if (!value) return "Pending";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Pending";
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function rideStatusLabel(status: RideStatus): string {
+  return status
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function paymentStatusLabel(status?: string): string {
+  if (status === "paid") return "Paid";
+  if (status === "voided") return "Voided";
+  if (status === "refunded") return "Refunded";
+  if (status === "authorized") return "Authorized";
+  return "Pending";
+}
+
+function compactRideId(id: string): string {
+  return `#${id.slice(0, 8)}`;
+}
+
 function setText(id: string, value: string): void {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
@@ -1157,6 +1552,9 @@ function bindConfirmRide(): void {
       connectRiderRideUpdates(ride);
       renderRideLocations(ride);
       renderRiderRideStatus(ride);
+      renderPaymentPanel(ride);
+      renderTripSharePanel(ride);
+      void refreshRideHistory();
       showToast("Ride requested", "success");
     } catch (err: any) {
       showToast(err.message || "Failed to request ride", "error");
