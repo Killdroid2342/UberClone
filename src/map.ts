@@ -1,7 +1,7 @@
 import type { Map, Marker, Polyline, DivIcon } from "leaflet";
 declare const L: any;
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from "./config.js";
-import type { LatLng } from "./types.js";
+import type { AdminDriverSummary, AdminRideSummary, LatLng } from "./types.js";
 
 let map: Map | null = null;
 let pickupMarker: Marker | null = null;
@@ -9,6 +9,7 @@ let destinationMarker: Marker | null = null;
 let driverMarker: Marker | null = null;
 let riderMarker: Marker | null = null;
 let routeLine: Polyline | null = null;
+let adminLayers: any[] = [];
 
 function createIcon(color: string, label: string): DivIcon {
   return L.divIcon({
@@ -23,9 +24,25 @@ const pickupIcon = createIcon("#1f9d61", "P");
 const destinationIcon = createIcon("#f1a51d", "D");
 const driverIcon = createIcon("#2f67f6", "C");
 const riderIcon = createIcon("#111511", "R");
+const adminPickupIcon = createIcon("#1f9d61", "P");
+const adminDestinationIcon = createIcon("#f1a51d", "D");
+const adminDriverIcon = createIcon("#2f67f6", "D");
+const adminRiderIcon = createIcon("#111511", "R");
+const adminAvailableDriverIcon = createIcon("#1f9d61", "V");
+
+function resetMapState(): void {
+  if (map) map.remove();
+  map = null;
+  pickupMarker = null;
+  destinationMarker = null;
+  driverMarker = null;
+  riderMarker = null;
+  routeLine = null;
+  adminLayers = [];
+}
 
 export function initMap(containerId: string): Map {
-  if (map) map.remove();
+  resetMapState();
   map = L.map(containerId, { zoomControl: false }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
     attribution: '&copy; OSM &copy; CARTO',
@@ -39,6 +56,19 @@ export function initMap(containerId: string): Map {
       () => {}
     );
   }
+  return map!;
+}
+
+export function initAdminMap(containerId: string): Map {
+  resetMapState();
+  map = L.map(containerId, { zoomControl: false }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; OSM &copy; CARTO',
+    subdomains: "abcd",
+    maxZoom: 20,
+  }).addTo(map);
+  L.control.zoom({ position: "bottomright" }).addTo(map);
+  window.setTimeout(() => map?.invalidateSize(), 0);
   return map!;
 }
 
@@ -141,5 +171,7 @@ export function clearRealtimeMarkers(): void {
   if (driverMarker) { map.removeLayer(driverMarker); driverMarker = null; }
   if (riderMarker) { map.removeLayer(riderMarker); riderMarker = null; }
 }
+
+
 
 export function getMap(): Map | null { return map; }
