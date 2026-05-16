@@ -1557,6 +1557,157 @@ svg {
   background: rgba(255, 255, 255, 0.92);
 }
 
+.share-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.payment-grid div,
+.share-grid div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+
+.payment-grid span,
+.share-grid span,
+.history-item span,
+.history-item small,
+.earning-item span,
+.earning-item small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.payment-grid strong,
+.share-grid strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.share-actions {
+  margin-top: 16px;
+}
+
+.history-list,
+.earnings-list,
+.notification-list,
+.admin-list {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.history-item,
+.earning-item,
+.notification-item,
+.admin-list-item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+
+.notification-item {
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+}
+
+.notification-item.is-unread {
+  border-color: rgba(47, 103, 246, 0.24);
+  background: rgba(47, 103, 246, 0.08);
+}
+
+.notification-copy,
+.admin-list-copy {
+  min-width: 0;
+}
+
+.history-copy,
+.earning-copy {
+  min-width: 0;
+}
+
+.history-copy strong,
+.earning-copy strong,
+.notification-copy strong,
+.admin-list-copy strong {
+  display: block;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.history-copy span,
+.earning-copy span,
+.earning-copy small,
+.notification-copy small,
+.admin-list-copy span {
+  margin-top: 4px;
+}
+
+.notification-copy small,
+.admin-list-copy span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 750;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.notification-item em,
+.admin-list-item em {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.history-copy small {
+  margin-top: 5px;
+  color: var(--green-dark);
+}
+
+.history-status {
+  padding: 6px 8px;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  background: white;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+
 
 .status-card,
 .metric-card,
